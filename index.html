@@ -201,11 +201,10 @@
       </div>
       <div class="config">
         <div class="config-title">📊 Google Apps Script URL</div>
-        <div class="url-row">
-          <input id="sheets-url" type="text" placeholder="วาง Deployment URL จาก Google Apps Script...">
-          <button class="btn btn-primary btn-sm" onclick="saveConfig()">บันทึก</button>
+        <div style="padding:8px 10px;background:var(--bg);border:0.5px solid var(--border);border-radius:var(--radius);font-size:11px;font-family:monospace;color:var(--text2);word-break:break-all;line-height:1.5">
+          ✓ เชื่อมต่อแล้ว (ฝังในไฟล์)
         </div>
-        <div class="tip">ℹ️ ต้องตั้งค่า Apps Script ก่อน — <a href="#" onclick="document.getElementById('guide-modal').classList.add('show');return false" style="color:var(--amber-text)">ดูคู่มือ</a></div>
+        <div class="tip">🔒 URL ถูกฝังในไฟล์แล้ว ทุกเครื่องเชื่อมชีตอัตโนมัติ</div>
       </div>
       <div class="config">
         <div class="config-title">🔑 เปลี่ยนรหัสผู้ดูแล</div>
@@ -439,7 +438,9 @@ buildDD('dd-f-branch',[{value:'',label:'ทุกสาขา'},...BRANCHES.map(
 
 let slots = JSON.parse(localStorage.getItem('bk_slots') || '[]');
 let bookings = JSON.parse(localStorage.getItem('bk_bookings') || '[]');
-let sheetsUrl = localStorage.getItem('bk_url') || '';
+const HARDCODED_URL = 'https://script.google.com/macros/s/AKfycbwhKHWmhg5YnaJzVNmuFlhIwxQpgQ0Q5y6UOG68Pm32eCpPIBOWcVBAvdg9otRtruTk/exec';
+let sheetsUrl = HARDCODED_URL;
+localStorage.setItem('bk_url', sheetsUrl);
 let adminPin = localStorage.getItem('bk_pin') || '123456';
 let adminOn = false;
 let currentUser = JSON.parse(localStorage.getItem('bk_user') || 'null');
@@ -694,9 +695,7 @@ async function delSlot(id){
 }
 
 function saveConfig(){
-  sheetsUrl=document.getElementById('sheets-url').value.trim();
-  localStorage.setItem('bk_url',sheetsUrl);
-  if(sheetsUrl){toast('บันทึก URL แล้ว กำลังโหลดข้อมูล...');fetchSheets();}
+  toast('URL ถูกฝังในไฟล์แล้ว ไม่จำเป็นต้องตั้งค่า');
 }
 
 function jsonpGet(url){
