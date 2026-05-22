@@ -328,8 +328,9 @@ function doGet(e) {
     if (!sh || sh.getLastRow() < 2) return out([], cb);
     const rows = sh.getRange(2,1,sh.getLastRow()-1,8).getValues();
     return out(rows.map(r=>({
-      id:r[0],name:r[1],date:r[2],start:r[3],
-      end:r[4],type:r[5],cap:Number(r[6]),location:r[7]
+      id:r[0], name:r[1], date:fmtDate(r[2]),
+      start:fmtTime(r[3]), end:fmtTime(r[4]),
+      type:r[5], cap:Number(r[6]), location:r[7]
     })), cb);
   }
   if (type === "bookings") {
@@ -337,8 +338,8 @@ function doGet(e) {
     if (!sh || sh.getLastRow() < 2) return out([], cb);
     const rows = sh.getRange(2,1,sh.getLastRow()-1,9).getValues();
     return out(rows.map(r=>({
-      id:r[0],empId:r[1],firstName:r[2],lastName:r[3],branch:r[4],
-      slotId:r[5],slotName:r[6],date:r[7],time:r[8]
+      id:r[0], empId:r[1], firstName:r[2], lastName:r[3], branch:r[4],
+      slotId:r[5], slotName:r[6], date:fmtDate(r[7]), time:String(r[8])
     })), cb);
   }
   if (action && e.parameter.data) {
@@ -402,7 +403,26 @@ function delById(sh,id){
 function delBySlot(sh,sid){
   const d=sh.getDataRange().getValues();
   for(let i=d.length-1;i>=1;i--)
-    if(String(d[i][4])===String(sid)) sh.deleteRow(i+1);
+    if(String(d[i][5])===String(sid)) sh.deleteRow(i+1);
+}
+function fmtDate(v){
+  if(!v) return '';
+  if(v instanceof Date){
+    const y=v.getFullYear();
+    const m=String(v.getMonth()+1).padStart(2,'0');
+    const d=String(v.getDate()).padStart(2,'0');
+    return y+'-'+m+'-'+d;
+  }
+  return String(v);
+}
+function fmtTime(v){
+  if(!v) return '';
+  if(v instanceof Date){
+    const h=String(v.getHours()).padStart(2,'0');
+    const m=String(v.getMinutes()).padStart(2,'0');
+    return h+':'+m;
+  }
+  return String(v);
 }
 function out(obj, cb){
   const json = JSON.stringify(obj);
