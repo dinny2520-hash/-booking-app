@@ -155,6 +155,9 @@
   <div id="panel-employee" class="panel active">
     <div id="emp-form-area" class="card" style="margin-bottom:12px">
       <div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:12px">ข้อมูลของคุณ</div>
+      <div class="form-row form-1" style="margin-bottom:10px">
+        <div><label>รหัสพนักงาน *</label><input id="emp-id" type="text" inputmode="numeric" placeholder="กรอกรหัสพนักงาน เช่น 001, 0023" autocomplete="off"></div>
+      </div>
       <div class="form-row" style="margin-bottom:10px">
         <div><label>ชื่อจริง *</label><input id="emp-first" type="text" placeholder="ชื่อจริงภาษาไทยเท่านั้น" autocomplete="given-name"></div>
         <div><label>นามสกุล *</label><input id="emp-last" type="text" placeholder="นามสกุล" autocomplete="family-name"></div>
@@ -176,7 +179,10 @@
       <div class="avatar" id="av">?</div>
       <div style="flex:1">
         <div style="font-weight:600;font-size:14px" id="u-name"></div>
-        <div style="margin-top:3px"><span class="badge b-branch" id="u-branch"></span></div>
+        <div style="margin-top:3px;display:flex;gap:6px;flex-wrap:wrap">
+          <span class="badge b-branch" id="u-branch"></span>
+          <span class="badge" style="background:var(--bg2);color:var(--text2)" id="u-empid"></span>
+        </div>
       </div>
       <button class="btn btn-sm" onclick="clearUser()">เปลี่ยน</button>
     </div>
@@ -329,10 +335,10 @@ function doGet(e) {
   if (type === "bookings") {
     const sh = ss.getSheetByName(SHEET_NAME);
     if (!sh || sh.getLastRow() < 2) return out([], cb);
-    const rows = sh.getRange(2,1,sh.getLastRow()-1,8).getValues();
+    const rows = sh.getRange(2,1,sh.getLastRow()-1,9).getValues();
     return out(rows.map(r=>({
-      id:r[0],firstName:r[1],lastName:r[2],branch:r[3],
-      slotId:r[4],slotName:r[5],date:r[6],time:r[7]
+      id:r[0],empId:r[1],firstName:r[2],lastName:r[3],branch:r[4],
+      slotId:r[5],slotName:r[6],date:r[7],time:r[8]
     })), cb);
   }
   if (action && e.parameter.data) {
@@ -353,8 +359,8 @@ function doPost(e) {
 function handleAction(ss, action, data) {
   if (action === "book") {
     const sh = getOrCreate(ss, SHEET_NAME,
-      ["ID","ชื่อจริง","นามสกุล","สาขา","SlotID","ชื่อรอบ","วันที่","เวลา"]);
-    sh.appendRow([data.id,data.firstName,data.lastName,data.branch,
+      ["ID","รหัสพนักงาน","ชื่อจริง","นามสกุล","สาขา","SlotID","ชื่อรอบ","วันที่","เวลา"]);
+    sh.appendRow([data.id,data.empId||'',data.firstName,data.lastName,data.branch,
       data.slotId,data.slotName,data.date,data.time]);
   }
   if (action === "cancel") {
@@ -476,8 +482,8 @@ setInterval(()=>{ fetchSheets(); }, 15000);
 
 function save(k,v){localStorage.setItem(k,JSON.stringify(v));}
 function booked(id){return bookings.filter(b=>b.slotId===id).length;}
-function userBooked(id){return currentUser&&bookings.some(b=>b.slotId===id&&b.firstName===currentUser.firstName&&b.lastName===currentUser.lastName);}
-function userHasAnyBooking(){return currentUser&&bookings.some(b=>b.firstName===currentUser.firstName&&b.lastName===currentUser.lastName);}
+function userBooked(id){return currentUser&&bookings.some(b=>b.slotId===id&&b.empId===currentUser.empId);}
+function userHasAnyBooking(){return currentUser&&bookings.some(b=>b.empId===currentUser.empId);}
 function typeLabel(t){return{exam:'สอบ',roleplay:'โรเพลย์',activity:'กิจกรรม'}[t]||t;}
 function typeCls(t){return{exam:'b-exam',roleplay:'b-roleplay',activity:'b-activity'}[t]||'';}
 function fmtDate(d){if(!d)return'';const[y,m,day]=String(d).split('-');const mn=['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];return`${parseInt(day)} ${mn[parseInt(m)-1]} ${parseInt(y)+543}`;}
@@ -564,7 +570,7 @@ function renderBookings(){
         <div style="display:flex;align-items:center;gap:8px">
           <div class="avatar" style="width:28px;height:28px;font-size:12px">${b.firstName?b.firstName[0].toUpperCase():'?'}</div>
           <div><div style="font-size:14px;font-weight:500;color:var(--text)">${b.firstName} ${b.lastName}</div>
-          <div style="font-size:12px;color:var(--text2)"><span class="badge b-branch">${b.branch||''}</span></div></div>
+          <div style="font-size:12px;color:var(--text2);margin-top:2px;display:flex;gap:4px;flex-wrap:wrap"><span class="badge b-branch">${b.branch||''}</span><span class="badge" style="background:var(--bg2);color:var(--text2)">รหัส ${b.empId||'-'}</span></div></div>
         </div>
         <div style="display:flex;align-items:center;gap:8px">
           <span style="font-size:12px;color:var(--text2)">${b.time||''}</span>
@@ -575,12 +581,14 @@ function renderBookings(){
 }
 
 function setUser(){
+  const empId=document.getElementById('emp-id').value.trim();
   const fn=document.getElementById('emp-first').value.trim();
   const ln=document.getElementById('emp-last').value.trim();
   const br=ddVals['dd-emp-branch'];
-  if(!fn||!ln||!br){toast('กรุณากรอกข้อมูลให้ครบ',true);return;}
+  if(!empId||!fn||!ln||!br){toast('กรุณากรอกข้อมูลให้ครบทุกช่อง',true);return;}
+  if(!/^\d+$/.test(empId)){toast('รหัสพนักงานต้องเป็นตัวเลขเท่านั้น',true);return;}
   if(/[a-zA-Z]/.test(fn)||/[a-zA-Z]/.test(ln)){toast('กรุณากรอกชื่อภาษาไทยเท่านั้น',true);return;}
-  currentUser={firstName:fn,lastName:ln,branch:br};
+  currentUser={empId,firstName:fn,lastName:ln,branch:br};
   save('bk_user',currentUser);
   showConfirmed(); renderSlots();
 }
@@ -589,6 +597,7 @@ function showConfirmed(){
   document.getElementById('u-name').textContent=currentUser.firstName+' '+currentUser.lastName;
   document.getElementById('av').textContent=currentUser.firstName[0];
   document.getElementById('u-branch').textContent=currentUser.branch;
+  document.getElementById('u-empid').textContent='รหัส '+currentUser.empId;
   document.getElementById('emp-confirmed').style.display='flex';
   document.getElementById('emp-form-area').style.display='none';
 }
@@ -596,6 +605,7 @@ function clearUser(){
   currentUser=null;localStorage.removeItem('bk_user');
   document.getElementById('emp-confirmed').style.display='none';
   document.getElementById('emp-form-area').style.display='block';
+  document.getElementById('emp-id').value='';
   document.getElementById('emp-first').value='';
   document.getElementById('emp-last').value='';
   pickDD('dd-emp-branch','','-- เลือกสาขา --');
@@ -668,7 +678,7 @@ async function confirmBooking(){
   }
   const btn=document.getElementById('confirm-btn');
   btn.disabled=true;btn.textContent='กำลังจอง...';
-  const bk={id:'b'+Date.now(),firstName:currentUser.firstName,lastName:currentUser.lastName,branch:currentUser.branch,slotId:s.id,slotName:s.name,date:s.date,time:s.start+'–'+s.end,type:s.type,location:s.location||''};
+  const bk={id:'b'+Date.now(),empId:currentUser.empId,firstName:currentUser.firstName,lastName:currentUser.lastName,branch:currentUser.branch,slotId:s.id,slotName:s.name,date:s.date,time:s.start+'–'+s.end,type:s.type,location:s.location||''};
   bookings.push(bk);save('bk_bookings',bookings);
   document.getElementById('confirm-modal').classList.remove('show');
   pendingId=null;
