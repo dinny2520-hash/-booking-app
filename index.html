@@ -291,25 +291,40 @@ const SLOTS_SHEET = "Slots";
 function doGet(e) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const type = e.parameter.type;
+  const action = e.parameter.action;
+
+  // READ
   if (type === "slots") {
     const sh = ss.getSheetByName(SLOTS_SHEET);
-    if (!sh || sh.getLastRow() < 2) return json([]);
+    if (!sh || sh.getLastRow() < 2) return cors([]);
     const rows = sh.getRange(2,1,sh.getLastRow()-1,8).getValues();
-    return json(rows.map(r=>({id:r[0],name:r[1],date:r[2],start:r[3],end:r[4],type:r[5],cap:r[6],location:r[7]})));
+    return cors(rows.map(r=>({id:r[0],name:r[1],date:r[2],start:r[3],end:r[4],type:r[5],cap:Number(r[6]),location:r[7]})));
   }
   if (type === "bookings") {
     const sh = ss.getSheetByName(SHEET_NAME);
-    if (!sh || sh.getLastRow() < 2) return json([]);
+    if (!sh || sh.getLastRow() < 2) return cors([]);
     const rows = sh.getRange(2,1,sh.getLastRow()-1,8).getValues();
-    return json(rows.map(r=>({id:r[0],firstName:r[1],lastName:r[2],branch:r[3],slotId:r[4],slotName:r[5],date:r[6],time:r[7]})));
+    return cors(rows.map(r=>({id:r[0],firstName:r[1],lastName:r[2],branch:r[3],slotId:r[4],slotName:r[5],date:r[6],time:r[7]})));
   }
-  return json({error:"unknown type"});
+
+  // WRITE via GET (mobile-friendly, avoids CORS preflight)
+  if (action && e.parameter.data) {
+    const data = JSON.parse(decodeURIComponent(e.parameter.data));
+    handleAction(ss, action, data);
+    return cors({success:true});
+  }
+
+  return cors({error:"unknown"});
 }
 
 function doPost(e) {
-  const data = JSON.parse(e.postData.contents);
   const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const action = data.action;
+  const data = JSON.parse(e.postData.contents);
+  handleAction(ss, data.action, data);
+  return cors({success:true});
+}
+
+function handleAction(ss, action, data) {
   if (action === "book") {
     const sh = getOrCreate(ss, SHEET_NAME, ["ID","ชื่อจริง","นามสกุล","สาขา","SlotID","ชื่อรอบ","วันที่","เวลา"]);
     sh.appendRow([data.id,data.firstName,data.lastName,data.branch,data.slotId,data.slotName,data.date,data.time]);
@@ -332,7 +347,6 @@ function doPost(e) {
     const bsh = ss.getSheetByName(SHEET_NAME);
     if (bsh) deleteRowsBySlotId(bsh, data.id);
   }
-  return json({success:true});
 }
 
 function getOrCreate(ss,name,headers){
@@ -341,15 +355,16 @@ function getOrCreate(ss,name,headers){
   return sh;
 }
 function deleteRowById(sh,id){
-  const data=sh.getDataRange().getValues();
-  for(let i=data.length-1;i>=1;i--){if(String(data[i][0])===String(id))sh.deleteRow(i+1);}
+  const d=sh.getDataRange().getValues();
+  for(let i=d.length-1;i>=1;i--){if(String(d[i][0])===String(id))sh.deleteRow(i+1);}
 }
 function deleteRowsBySlotId(sh,slotId){
-  const data=sh.getDataRange().getValues();
-  for(let i=data.length-1;i>=1;i--){if(String(data[i][4])===String(slotId))sh.deleteRow(i+1);}
+  const d=sh.getDataRange().getValues();
+  for(let i=d.length-1;i>=1;i--){if(String(d[i][4])===String(slotId))sh.deleteRow(i+1);}
 }
-function json(obj){
-  return ContentService.createTextOutput(JSON.stringify(obj)).setMimeType(ContentService.MimeType.JSON);
+function cors(obj){
+  return ContentService.createTextOutput(JSON.stringify(obj))
+    .setMimeType(ContentService.MimeType.JSON);
 }</div>
     </div>
     <div class="modal-actions"><button class="btn btn-primary btn-sm" onclick="document.getElementById('guide-modal').classList.remove('show')">เข้าใจแล้ว</button></div>
@@ -627,8 +642,8 @@ async function fetchSheets(){
   setSyncUI('spin');
   try{
     const [sr,br]=await Promise.all([
-      fetch(sheetsUrl+'?type=slots').then(r=>r.json()).catch(()=>null),
-      fetch(sheetsUrl+'?type=bookings').then(r=>r.json()).catch(()=>null)
+      fetch(sheetsUrl+'?type=slots',{method:'GET'}).then(r=>r.json()).catch(()=>null),
+      fetch(sheetsUrl+'?type=bookings',{method:'GET'}).then(r=>r.json()).catch(()=>null)
     ]);
     if(sr&&Array.isArray(sr)&&sr.length){slots=sr;save('bk_slots',slots);}
     if(br&&Array.isArray(br)){bookings=br;save('bk_bookings',bookings);}
@@ -641,7 +656,10 @@ function manualSync(){if(sheetsUrl)fetchSheets();else toast('กรุณาต�
 
 async function apiPost(data){
   if(!sheetsUrl)return;
-  try{await fetch(sheetsUrl,{method:'POST',mode:'no-cors',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});}catch(e){}
+  try{
+    const url=sheetsUrl+'?action='+data.action+'&data='+encodeURIComponent(JSON.stringify(data));
+    await fetch(url,{method:'GET'}).catch(()=>null);
+  }catch(e){}
 }
 
 function setSyncUI(state){
