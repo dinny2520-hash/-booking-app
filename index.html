@@ -149,7 +149,6 @@
   <div class="tabs">
     <button class="tab active" onclick="switchTab('employee',this)">👤 พนักงาน</button>
     <button class="tab" onclick="switchTab('admin',this)">🔐 ผู้ดูแล</button>
-    <button class="tab" onclick="switchTab('bookings',this)">📋 ข้อมูลการจอง</button>
   </div>
 
   <!-- EMPLOYEE -->
@@ -219,31 +218,30 @@
         <button class="btn btn-primary btn-sm" onclick="openAddSlot()">+ เพิ่มรอบ</button>
       </div>
       <div id="admin-slots"></div>
-    </div>
-  </div>
 
-  <!-- BOOKINGS -->
-  <div id="panel-bookings" class="panel">
-    <div style="font-size:12px;color:var(--text2);background:var(--bg2);padding:8px 12px;border-radius:var(--radius);margin-bottom:1rem;display:flex;gap:6px;align-items:center">
-      🔄 ข้อมูลซิงค์กับ Google Sheets — <a href="#" onclick="manualSync();return false" style="color:#378ADD">กดซิงค์ล่าสุด</a>
-    </div>
-    <div class="stats" id="stats"></div>
-    <div class="filter-row">
-      <div class="dd-wrap" id="dd-f-branch" style="flex:1;min-width:130px">
-        <button type="button" class="dd-btn" id="dd-f-branch-btn" onclick="toggleDD('dd-f-branch')">
-          <span id="dd-f-branch-label">ทุกสาขา</span><span style="font-size:10px;color:var(--text3)">▼</span>
-        </button>
-        <div class="dd-list" id="dd-f-branch-list"></div>
+      <div style="margin-top:1.5rem;padding-top:1.25rem;border-top:0.5px solid var(--border)">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem">
+          <div class="section-title" style="margin:0">📋 รายชื่อผู้จองทั้งหมด</div>
+          <button class="btn btn-sm" onclick="manualSync()">🔄 ซิงค์</button>
+        </div>
+        <div class="stats" id="stats"></div>
+        <div class="filter-row">
+          <div class="dd-wrap" id="dd-f-branch" style="flex:1;min-width:130px">
+            <button type="button" class="dd-btn" id="dd-f-branch-btn" onclick="toggleDD('dd-f-branch')">
+              <span id="dd-f-branch-label">ทุกสาขา</span><span style="font-size:10px;color:var(--text3)">▼</span>
+            </button>
+            <div class="dd-list" id="dd-f-branch-list"></div>
+          </div>
+          <div class="dd-wrap" id="dd-f-slot" style="flex:1;min-width:130px">
+            <button type="button" class="dd-btn" id="dd-f-slot-btn" onclick="toggleDD('dd-f-slot')">
+              <span id="dd-f-slot-label">ทุกรอบ</span><span style="font-size:10px;color:var(--text3)">▼</span>
+            </button>
+            <div class="dd-list" id="dd-f-slot-list"></div>
+          </div>
+        </div>
+        <div id="bookings-list"></div>
       </div>
-      <div class="dd-wrap" id="dd-f-slot" style="flex:1;min-width:130px">
-        <button type="button" class="dd-btn" id="dd-f-slot-btn" onclick="toggleDD('dd-f-slot')">
-          <span id="dd-f-slot-label">ทุกรอบ</span><span style="font-size:10px;color:var(--text3)">▼</span>
-        </button>
-        <div class="dd-list" id="dd-f-slot-list"></div>
-      </div>
     </div>
-    <div class="section-title">รายชื่อผู้จองทั้งหมด</div>
-    <div id="bookings-list"></div>
   </div>
 
 </div><!-- /app-wrap -->
@@ -284,13 +282,16 @@
 </div>
 
 <!-- SUCCESS MODAL -->
-<div class="overlay" id="success-modal">
-  <div class="modal" style="max-width:360px;text-align:center">
-    <div style="font-size:56px;margin-bottom:12px">🎉</div>
-    <div style="font-size:18px;font-weight:700;color:var(--text);margin-bottom:8px">จองรอบสำเร็จ!</div>
-    <div id="success-detail" style="font-size:14px;color:var(--text2);line-height:1.8;margin-bottom:20px"></div>
-    <div style="font-size:12px;color:var(--text3);background:var(--bg2);padding:8px 12px;border-radius:var(--radius);margin-bottom:20px">หากต้องการยกเลิก กรุณาติดต่อผู้ดูแลระบบ</div>
-    <button class="btn btn-primary" style="width:100%;font-size:15px;padding:13px" onclick="doneBooking()">✓ เสร็จสิ้น ปิดหน้านี้</button>
+<div class="overlay" id="success-modal" style="background:rgba(0,0,0,0.75)">
+  <div class="modal" style="max-width:360px;text-align:center;padding:2rem 1.5rem">
+    <div style="font-size:64px;margin-bottom:14px">🎉</div>
+    <div style="font-size:20px;font-weight:700;color:var(--text);margin-bottom:10px">จองเรียบร้อยแล้ว!</div>
+    <div id="success-detail" style="font-size:14px;color:var(--text2);line-height:1.9;margin-bottom:16px;background:var(--bg2);padding:12px 14px;border-radius:var(--radius);text-align:left"></div>
+    <div style="font-size:12px;color:var(--text3);margin-bottom:24px">📞 หากต้องการยกเลิก กรุณาติดต่อผู้ดูแลระบบ</div>
+    <button class="btn btn-primary" id="done-btn" style="width:100%;font-size:16px;padding:15px;border-radius:var(--radius-lg)" onclick="doneBooking()">
+      ✓ ยืนยัน — ออกจากแอป
+    </button>
+    <div style="margin-top:10px;font-size:12px;color:var(--text3)" id="close-hint"></div>
   </div>
 </div>
 
@@ -468,8 +469,10 @@ if (!slots.length) {
 }
 if (currentUser) showConfirmed();
 buildPins();
-if (sheetsUrl) { setSyncUI('spin'); fetchSheets(); }
-else renderSlots();
+setSyncUI('spin');
+fetchSheets();
+// auto-sync ทุก 30 วินาที
+setInterval(()=>{ fetchSheets(); }, 15000);
 
 function save(k,v){localStorage.setItem(k,JSON.stringify(v));}
 function booked(id){return bookings.filter(b=>b.slotId===id).length;}
@@ -484,8 +487,7 @@ function switchTab(t,el){
   el.classList.add('active');
   document.getElementById('panel-'+t).classList.add('active');
   if(t==='employee') renderSlots();
-  if(t==='admin'&&adminOn) renderAdminSlots();
-  if(t==='bookings'){fillSlotFilter();renderBookings();}
+  if(t==='admin'&&adminOn){ renderAdminSlots(); fillSlotFilter(); renderBookings(); }
 }
 
 function renderSlots(){
@@ -665,15 +667,31 @@ async function confirmBooking(){
 }
 
 function doneBooking(){
-  document.getElementById('success-modal').classList.remove('show');
-  // พยายามปิด tab หรือ redirect ไปหน้าว่าง
-  try{ window.close(); }catch(e){}
-  // ถ้าปิดไม่ได้ (mobile browser) ให้แสดงข้อความ
+  const btn = document.getElementById('done-btn');
+  const hint = document.getElementById('close-hint');
+  btn.disabled = true;
+  btn.textContent = 'กำลังออก...';
+  // วิธีที่ 1: window.close() (ใช้ได้เมื่อเปิดจาก link)
+  window.close();
+  // วิธีที่ 2: ถ้าปิดไม่ได้ ให้ redirect ไปหน้าว่างเพื่อ clear state
   setTimeout(()=>{
-    if(!document.hidden){
-      toast('จองสำเร็จแล้ว สามารถปิดหน้านี้ได้เลยครับ');
+    try{
+      window.location.href = 'about:blank';
+    }catch(e){}
+  }, 200);
+  // วิธีที่ 3: ถ้ายังอยู่ในหน้า แสดงข้อความแนะนำให้ปิดเอง
+  setTimeout(()=>{
+    if(document.body){
+      document.body.innerHTML = `
+        <div style="min-height:100vh;display:flex;align-items:center;justify-content:center;background:#f5f5f4;font-family:'Sarabun',sans-serif;padding:2rem;text-align:center">
+          <div>
+            <div style="font-size:72px;margin-bottom:16px">✅</div>
+            <div style="font-size:22px;font-weight:700;color:#1a1a1a;margin-bottom:8px">จองเรียบร้อยแล้ว!</div>
+            <div style="font-size:15px;color:#6b7280">สามารถปิดหน้าต่างนี้ได้เลยครับ</div>
+          </div>
+        </div>`;
     }
-  },300);
+  }, 500);
 }
 
 async function cancelBooking(id){
@@ -753,8 +771,7 @@ async function fetchSheets(){
     if(sr&&Array.isArray(sr)&&sr.length){slots=sr;save('bk_slots',slots);}
     if(br&&Array.isArray(br)){bookings=br;save('bk_bookings',bookings);}
     setSyncUI('ok');renderSlots();
-    if(adminOn)renderAdminSlots();
-    if(document.getElementById('panel-bookings').classList.contains('active')){fillSlotFilter();renderBookings();}
+    if(adminOn){ renderAdminSlots(); fillSlotFilter(); renderBookings(); }
   }catch(e){setSyncUI('err');}
 }
 function manualSync(){if(sheetsUrl)fetchSheets();else toast('กรุณาตั้งค่า URL ก่อน',true);}
