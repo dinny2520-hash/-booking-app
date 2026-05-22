@@ -692,9 +692,23 @@ function openConfirm(id){
 
 async function confirmBooking(){
   const s=slots.find(s=>s.id===pendingId);if(!s)return;
+  const btn=document.getElementById('confirm-btn');
+  btn.disabled=true;btn.textContent='กำลังตรวจสอบ...';
+  // ดึงข้อมูลล่าสุดจาก Sheets ก่อนเสมอ เพื่อป้องกันจองซ้ำจากเครื่องอื่น
+  try{
+    const fresh=await smartGet(sheetsUrl+'?type=bookings').catch(()=>null);
+    if(fresh&&Array.isArray(fresh)){
+      bookings=fresh.map(b=>({...b,date:cleanDate(b.date)}));
+      save('bk_bookings',bookings);
+    }
+  }catch(e){}
+  // เช็คซ้ำด้วยข้อมูลล่าสุดจาก Sheets
   if(userHasAnyBooking()){
     document.getElementById('confirm-modal').classList.remove('show');
-    toast('คุณได้จองไปแล้ว 1 รอบ — ไม่สามารถจองซ้ำได้',true);return;
+    btn.disabled=false;btn.textContent='ยืนยันจอง';
+    renderSlots();
+    toast('รหัสพนักงานนี้ได้จองไปแล้ว — 1 รหัสจองได้เพียง 1 รอบเท่านั้น',true);
+    return;
   }
   const btn=document.getElementById('confirm-btn');
   btn.disabled=true;btn.textContent='กำลังจอง...';
@@ -813,11 +827,44 @@ async function fetchSheets(){
       smartGet(sheetsUrl+'?type=slots').catch(()=>null),
       smartGet(sheetsUrl+'?type=bookings').catch(()=>null)
     ]);
-    if(sr&&Array.isArray(sr)&&sr.length){slots=sr;save('bk_slots',slots);}
-    if(br&&Array.isArray(br)){bookings=br;save('bk_bookings',bookings);}
+    if(sr&&Array.isArray(sr)&&sr.length){
+      // sanitize time fields ที่อาจเป็น Date object จาก Sheets
+      slots=sr.map(s=>({...s,
+        start:cleanTime(s.start),
+        end:cleanTime(s.end),
+        date:cleanDate(s.date)
+      }));
+      save('bk_slots',slots);
+    }
+    if(br&&Array.isArray(br)){
+      bookings=br.map(b=>({...b,date:cleanDate(b.date)}));
+      save('bk_bookings',bookings);
+    }
     setSyncUI('ok');renderSlots();
     if(adminOn){ renderAdminSlots(); fillSlotFilter(); renderBookings(); }
   }catch(e){setSyncUI('err');}
+}
+
+function cleanTime(v){
+  if(!v) return '';
+  const s=String(v);
+  // กรณีเป็น ISO date string เช่น 1899-12-30T02:47:56.000Z
+  if(s.includes('T')){
+    const d=new Date(s);
+    const h=String(d.getUTCHours()).padStart(2,'0');
+    const m=String(d.getUTCMinutes()).padStart(2,'0');
+    return h+':'+m;
+  }
+  return s;
+}
+
+function cleanDate(v){
+  if(!v) return '';
+  const s=String(v);
+  if(s.includes('T')){
+    return s.split('T')[0];
+  }
+  return s;
 }
 function manualSync(){if(sheetsUrl)fetchSheets();else toast('กรุณาตั้งค่า URL ก่อน',true);}
 async function apiPost(data){
