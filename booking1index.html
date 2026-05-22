@@ -1,0 +1,671 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ระบบจองรอบกิจกรรม</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  :root{
+    --bg:#ffffff;--bg2:#f5f5f4;--bg3:#eeece8;
+    --text:#1a1a1a;--text2:#6b7280;--text3:#9ca3af;
+    --border:rgba(0,0,0,0.12);--border2:rgba(0,0,0,0.22);
+    --green:#1D9E75;--green-bg:#E1F5EE;--green-text:#085041;
+    --blue-bg:#E6F1FB;--blue-text:#0C447C;
+    --amber-bg:#FAEEDA;--amber-text:#633806;
+    --red:#A32D2D;--red-bg:#FCEBEB;--red-border:#F7C1C1;
+    --purple-bg:#EEEDFE;--purple-text:#3C3489;
+    --radius:8px;--radius-lg:12px;
+    --font:'Sarabun',sans-serif;
+  }
+  @media(prefers-color-scheme:dark){
+    :root{
+      --bg:#1c1c1e;--bg2:#2c2c2e;--bg3:#3a3a3c;
+      --text:#f2f2f7;--text2:#aeaeb2;--text3:#636366;
+      --border:rgba(255,255,255,0.12);--border2:rgba(255,255,255,0.25);
+      --green-bg:#04342C;--green-text:#9FE1CB;
+      --blue-bg:#042C53;--blue-text:#85B7EB;
+      --amber-bg:#412402;--amber-text:#FAC775;
+      --red-bg:#501313;--red-border:#791F1F;
+      --purple-bg:#26215C;--purple-text:#AFA9EC;
+    }
+  }
+  body{font-family:var(--font);background:var(--bg3);color:var(--text);min-height:100vh}
+  .app-wrap{max-width:680px;margin:0 auto;padding:1rem}
+  .header{background:var(--bg);border-radius:var(--radius-lg);padding:1rem 1.25rem;margin-bottom:12px;border:0.5px solid var(--border);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px}
+  .header h1{font-size:20px;font-weight:600;color:var(--text)}
+  .header p{font-size:13px;color:var(--text2);margin-top:2px}
+  .sync-pill{display:flex;align-items:center;gap:6px;font-size:12px;padding:6px 12px;background:var(--bg2);border-radius:20px;cursor:pointer;border:0.5px solid var(--border);color:var(--text2)}
+  .sync-dot{width:7px;height:7px;border-radius:50%;background:var(--green);flex-shrink:0}
+  .sync-dot.off{background:#E24B4A}
+  .sync-dot.spin{background:#EF9F27;animation:pulse .8s infinite}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+  .tabs{display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap}
+  .tab{padding:8px 16px;border-radius:20px;border:0.5px solid var(--border2);background:transparent;color:var(--text2);cursor:pointer;font-size:14px;font-weight:500;font-family:var(--font);transition:all .15s}
+  .tab.active{background:var(--text);color:var(--bg);border-color:transparent}
+  .tab:hover:not(.active){background:var(--bg2)}
+  .panel{display:none}.panel.active{display:block}
+  .card{background:var(--bg);border:0.5px solid var(--border);border-radius:var(--radius-lg);padding:1rem 1.25rem;margin-bottom:10px}
+  .slot-card{cursor:pointer;transition:border-color .15s,transform .1s}
+  .slot-card:hover{border-color:var(--border2);transform:translateY(-1px)}
+  .slot-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;gap:8px}
+  .slot-name{font-size:15px;font-weight:600;color:var(--text)}
+  .badges{display:flex;gap:6px;align-items:center;flex-wrap:wrap;flex-shrink:0}
+  .badge{font-size:11px;padding:3px 9px;border-radius:10px;font-weight:600;white-space:nowrap}
+  .b-exam{background:var(--blue-bg);color:var(--blue-text)}
+  .b-roleplay{background:var(--green-bg);color:var(--green-text)}
+  .b-activity{background:var(--amber-bg);color:var(--amber-text)}
+  .b-full{background:var(--red-bg);color:var(--red)}
+  .b-booked{background:var(--green-bg);color:var(--green-text)}
+  .b-branch{background:var(--purple-bg);color:var(--purple-text)}
+  .slot-meta{display:flex;gap:14px;flex-wrap:wrap}
+  .meta{display:flex;align-items:center;gap:5px;font-size:13px;color:var(--text2)}
+  .meta svg{width:14px;height:14px;flex-shrink:0}
+  .cap-bar{height:4px;background:var(--border);border-radius:2px;margin-top:8px;overflow:hidden}
+  .cap-fill{height:100%;border-radius:2px;transition:width .3s}
+  .ok{background:#1D9E75}.mid{background:#EF9F27}.full{background:#E24B4A}
+  .cap-text{font-size:12px;color:var(--text3);margin-top:4px;text-align:right}
+  .btn{padding:9px 18px;border-radius:var(--radius);border:0.5px solid var(--border2);background:transparent;color:var(--text);cursor:pointer;font-size:14px;font-weight:500;font-family:var(--font);transition:all .15s}
+  .btn:hover{background:var(--bg2)}
+  .btn-primary{background:var(--text);color:var(--bg);border-color:transparent}
+  .btn-primary:hover{opacity:.85}
+  .btn-danger{background:var(--red-bg);color:var(--red);border-color:var(--red-border)}
+  .btn-sm{padding:6px 13px;font-size:13px}
+  label{font-size:13px;color:var(--text2);display:block;margin-bottom:5px}
+  input,select{width:100%;padding:9px 12px;border:0.5px solid var(--border2);border-radius:var(--radius);background:var(--bg);color:var(--text);font-size:14px;font-family:var(--font);outline:none;transition:border-color .15s}
+  input:focus,select:focus{border-color:#378ADD}
+  .form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px}
+  .form-1{grid-template-columns:1fr}
+  .form-3{grid-template-columns:1fr 1fr 1fr}
+  @media(max-width:480px){.form-row,.form-3{grid-template-columns:1fr}}
+  .section-title{font-size:17px;font-weight:600;color:var(--text);margin-bottom:1rem}
+  .empty{text-align:center;padding:3rem 1rem;color:var(--text2)}
+  .empty-icon{font-size:40px;margin-bottom:10px;color:var(--text3)}
+  /* modal */
+  .overlay{position:fixed;inset:0;background:rgba(0,0,0,0.4);display:none;align-items:center;justify-content:center;z-index:100;padding:1rem}
+  .overlay.show{display:flex}
+  .modal{background:var(--bg);border-radius:var(--radius-lg);border:0.5px solid var(--border);padding:1.5rem;width:100%;max-width:460px;max-height:90vh;overflow-y:auto}
+  .modal-title{font-size:16px;font-weight:600;margin-bottom:1rem;color:var(--text)}
+  .modal-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:1.25rem}
+  /* toast */
+  .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(80px);background:#1a1a1a;color:#fff;padding:12px 20px;border-radius:var(--radius-lg);font-size:14px;font-weight:500;z-index:200;transition:transform .3s;white-space:nowrap;box-shadow:0 4px 16px rgba(0,0,0,0.2)}
+  .toast.show{transform:translateX(-50%) translateY(0)}
+  .toast.err{background:var(--red)}
+  /* pin */
+  .pin-wrap{text-align:center;padding:2rem 1rem}
+  .pin-icon{font-size:48px;margin-bottom:1rem;color:var(--text3)}
+  .pin-boxes{display:flex;gap:8px;justify-content:center;margin:1rem 0}
+  .pin-box{width:44px;height:52px;border:0.5px solid var(--border2);border-radius:var(--radius);font-size:22px;font-weight:600;text-align:center;background:var(--bg);color:var(--text);font-family:var(--font)}
+  .pin-box:focus{border-color:#378ADD;outline:none}
+  .pin-err{font-size:12px;color:var(--red);min-height:18px}
+  /* admin slots */
+  .arow{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:0.5px solid var(--border)}
+  .arow:last-child{border-bottom:none}
+  /* config */
+  .config{background:var(--bg2);border-radius:var(--radius);padding:1rem;margin-bottom:1rem}
+  .config-title{font-size:11px;font-weight:600;color:var(--text2);letter-spacing:.06em;text-transform:uppercase;margin-bottom:8px}
+  .url-row{display:flex;gap:8px}
+  .url-row input{flex:1}
+  .tip{display:flex;gap:6px;font-size:12px;color:var(--amber-text);background:var(--amber-bg);padding:7px 10px;border-radius:var(--radius);margin-top:8px;line-height:1.5}
+  /* stats */
+  .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:1rem}
+  .stat{background:var(--bg2);border-radius:var(--radius);padding:1rem;text-align:center}
+  .stat-n{font-size:24px;font-weight:700;color:var(--text)}
+  .stat-l{font-size:12px;color:var(--text2);margin-top:2px}
+  /* user confirmed */
+  .user-row{display:flex;align-items:center;gap:10px;margin-bottom:1.25rem;padding-bottom:1.25rem;border-bottom:0.5px solid var(--border)}
+  .avatar{width:34px;height:34px;border-radius:50%;background:var(--blue-bg);color:var(--blue-text);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;flex-shrink:0}
+  .booked-row{display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:0.5px solid var(--border)}
+  .booked-row:last-child{border-bottom:none}
+  .filter-row{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:1rem}
+  .filter-row select{width:auto;min-width:130px}
+  /* code block for guide */
+  .code{background:var(--bg2);border-radius:var(--radius);padding:10px 12px;font-family:monospace;font-size:11px;line-height:1.6;white-space:pre-wrap;word-break:break-all;color:var(--text);margin-top:8px;max-height:200px;overflow-y:auto;border:0.5px solid var(--border)}
+</style>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+<div class="app-wrap">
+
+  <div class="header">
+    <div>
+      <h1>ระบบจองรอบกิจกรรม</h1>
+      <p>Activity Booking System</p>
+    </div>
+    <div class="sync-pill" onclick="manualSync()" title="กดเพื่อซิงค์">
+      <div class="sync-dot off" id="sync-dot"></div>
+      <span id="sync-text">ยังไม่เชื่อม Sheets</span>
+    </div>
+  </div>
+
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('employee',this)">👤 พนักงาน</button>
+    <button class="tab" onclick="switchTab('admin',this)">🔐 ผู้ดูแล</button>
+    <button class="tab" onclick="switchTab('bookings',this)">📋 ข้อมูลการจอง</button>
+  </div>
+
+  <!-- EMPLOYEE -->
+  <div id="panel-employee" class="panel active">
+    <div id="emp-form-area" class="card" style="margin-bottom:12px">
+      <div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:12px">ข้อมูลของคุณ</div>
+      <div class="form-row" style="margin-bottom:10px">
+        <div><label>ชื่อจริง *</label><input id="emp-first" type="text" placeholder="ชื่อจริงภาษาไทยเท่านั้น" autocomplete="given-name"></div>
+        <div><label>นามสกุล *</label><input id="emp-last" type="text" placeholder="นามสกุล" autocomplete="family-name"></div>
+      </div>
+      <div class="form-row form-1" style="margin-bottom:10px">
+        <div>
+          <label>สาขา *</label>
+          <select id="emp-branch">
+            <option value="">-- เลือกสาขา --</option>
+            <option>ปลวกแดง</option><option>ซีเค</option><option>โรงงานปลวกแดง</option>
+            <option>ระยอง</option><option>บ้านค่าย</option><option>นิคมพัฒนา</option>
+            <option>มาบตาพุด</option><option>โรงงานระยอง</option>
+          </select>
+        </div>
+      </div>
+      <button class="btn btn-primary" onclick="setUser()" style="width:100%">✓ ยืนยันข้อมูล</button>
+    </div>
+    <div id="emp-confirmed" class="card user-row" style="display:none">
+      <div class="avatar" id="av">?</div>
+      <div style="flex:1">
+        <div style="font-weight:600;font-size:14px" id="u-name"></div>
+        <div style="margin-top:3px"><span class="badge b-branch" id="u-branch"></span></div>
+      </div>
+      <button class="btn btn-sm" onclick="clearUser()">เปลี่ยน</button>
+    </div>
+    <div id="slots-container"></div>
+  </div>
+
+  <!-- ADMIN -->
+  <div id="panel-admin" class="panel">
+    <div id="admin-lock" class="pin-wrap">
+      <div class="pin-icon">🔐</div>
+      <div style="font-size:15px;font-weight:600;margin-bottom:4px;color:var(--text)">หน้าผู้ดูแลระบบ</div>
+      <div style="font-size:13px;color:var(--text2)">กรอกรหัส 6 หลักเพื่อเข้าถึง</div>
+      <div class="pin-boxes" id="pin-boxes"></div>
+      <div class="pin-err" id="pin-err"></div>
+      <button class="btn btn-primary" onclick="verifyPin()" style="margin-top:8px">เข้าสู่ระบบ</button>
+    </div>
+    <div id="admin-content" style="display:none">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem">
+        <span style="font-size:13px;color:var(--green)">✓ โหมดผู้ดูแล</span>
+        <button class="btn btn-sm btn-danger" onclick="lockAdmin()">🔒 ออกจากระบบ</button>
+      </div>
+      <div class="config">
+        <div class="config-title">📊 Google Apps Script URL</div>
+        <div class="url-row">
+          <input id="sheets-url" type="text" placeholder="วาง Deployment URL จาก Google Apps Script...">
+          <button class="btn btn-primary btn-sm" onclick="saveConfig()">บันทึก</button>
+        </div>
+        <div class="tip">ℹ️ ต้องตั้งค่า Apps Script ก่อน — <a href="#" onclick="document.getElementById('guide-modal').classList.add('show');return false" style="color:var(--amber-text)">ดูคู่มือ</a></div>
+      </div>
+      <div class="config">
+        <div class="config-title">🔑 เปลี่ยนรหัสผู้ดูแล</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <input id="new-pin" type="password" placeholder="รหัสใหม่ 6 หลัก" maxlength="6" style="max-width:160px">
+          <input id="new-pin2" type="password" placeholder="ยืนยันรหัสใหม่" maxlength="6" style="max-width:160px">
+          <button class="btn btn-sm" onclick="changePin()">เปลี่ยนรหัส</button>
+        </div>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem">
+        <div class="section-title" style="margin:0">จัดการรอบกิจกรรม</div>
+        <button class="btn btn-primary btn-sm" onclick="openAddSlot()">+ เพิ่มรอบ</button>
+      </div>
+      <div id="admin-slots"></div>
+    </div>
+  </div>
+
+  <!-- BOOKINGS -->
+  <div id="panel-bookings" class="panel">
+    <div style="font-size:12px;color:var(--text2);background:var(--bg2);padding:8px 12px;border-radius:var(--radius);margin-bottom:1rem;display:flex;gap:6px;align-items:center">
+      🔄 ข้อมูลซิงค์กับ Google Sheets — <a href="#" onclick="manualSync();return false" style="color:#378ADD">กดซิงค์ล่าสุด</a>
+    </div>
+    <div class="stats" id="stats"></div>
+    <div class="filter-row">
+      <select id="f-branch" onchange="renderBookings()">
+        <option value="">ทุกสาขา</option>
+        <option>ปลวกแดง</option><option>ซีเค</option><option>โรงงานปลวกแดง</option>
+        <option>ระยอง</option><option>บ้านค่าย</option><option>นิคมพัฒนา</option>
+        <option>มาบตาพุด</option><option>โรงงานระยอง</option>
+      </select>
+      <select id="f-slot" onchange="renderBookings()"><option value="">ทุกรอบ</option></select>
+    </div>
+    <div class="section-title">รายชื่อผู้จองทั้งหมด</div>
+    <div id="bookings-list"></div>
+  </div>
+
+</div><!-- /app-wrap -->
+
+<!-- MODALS -->
+<div class="overlay" id="slot-modal">
+  <div class="modal">
+    <div class="modal-title" id="modal-title">เพิ่มรอบกิจกรรม</div>
+    <div class="form-row form-1"><div><label>ชื่อกิจกรรม / รอบ *</label><input id="f-name" type="text" placeholder="เช่น สอบสัมภาษณ์ รอบที่ 1"></div></div>
+    <div class="form-row">
+      <div><label>วันที่ *</label><input id="f-date" type="date"></div>
+      <div><label>ประเภท</label>
+        <select id="f-type"><option value="exam">สอบ (Exam)</option><option value="roleplay">โรเพลย์ (Roleplay)</option><option value="activity">กิจกรรม (Activity)</option></select>
+      </div>
+    </div>
+    <div class="form-row form-3">
+      <div><label>เวลาเริ่ม *</label><input id="f-start" type="time"></div>
+      <div><label>เวลาสิ้นสุด *</label><input id="f-end" type="time"></div>
+      <div><label>รับสูงสุด (คน) *</label><input id="f-cap" type="number" min="1" value="10"></div>
+    </div>
+    <div class="form-row form-1"><div><label>สถานที่ / ห้อง</label><input id="f-location" type="text" placeholder="เช่น ห้องประชุม A"></div></div>
+    <div class="modal-actions">
+      <button class="btn btn-sm" onclick="closeModal()">ยกเลิก</button>
+      <button class="btn btn-primary btn-sm" onclick="saveSlot()">บันทึกรอบ</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="confirm-modal">
+  <div class="modal" style="max-width:380px">
+    <div class="modal-title">ยืนยันการจอง</div>
+    <div id="confirm-details" style="font-size:14px;color:var(--text2);line-height:1.9"></div>
+    <div class="modal-actions">
+      <button class="btn btn-sm" onclick="document.getElementById('confirm-modal').classList.remove('show');pendingId=null">ยกเลิก</button>
+      <button class="btn btn-primary btn-sm" id="confirm-btn" onclick="confirmBooking()">ยืนยันจอง</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="guide-modal">
+  <div class="modal" style="max-width:520px">
+    <div class="modal-title">📊 คู่มือเชื่อมต่อ Google Sheets (Real-time)</div>
+    <div style="font-size:13px;color:var(--text2);line-height:1.8">
+      <p style="font-weight:600;color:var(--text);margin-bottom:8px">ขั้นตอนการตั้งค่า Apps Script</p>
+      <ol style="padding-left:1.2rem;display:flex;flex-direction:column;gap:5px">
+        <li>เปิด Google Sheets ใหม่ → <strong>Extensions → Apps Script</strong></li>
+        <li>ลบโค้ดเดิมออก แล้ววางโค้ดด้านล่างทั้งหมด</li>
+        <li><strong>Save</strong> → <strong>Deploy → New deployment</strong></li>
+        <li>Type: Web app · Execute as: Me · Who has access: <strong>Anyone</strong></li>
+        <li>กด Deploy → Authorize → คัดลอก <strong>Web app URL</strong></li>
+        <li>วาง URL ในหน้าผู้ดูแล แล้วกดบันทึก</li>
+      </ol>
+      <div class="code">const SHEET_NAME = "Bookings";
+const SLOTS_SHEET = "Slots";
+
+function doGet(e) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const type = e.parameter.type;
+  if (type === "slots") {
+    const sh = ss.getSheetByName(SLOTS_SHEET);
+    if (!sh || sh.getLastRow() < 2) return json([]);
+    const rows = sh.getRange(2,1,sh.getLastRow()-1,8).getValues();
+    return json(rows.map(r=>({id:r[0],name:r[1],date:r[2],start:r[3],end:r[4],type:r[5],cap:r[6],location:r[7]})));
+  }
+  if (type === "bookings") {
+    const sh = ss.getSheetByName(SHEET_NAME);
+    if (!sh || sh.getLastRow() < 2) return json([]);
+    const rows = sh.getRange(2,1,sh.getLastRow()-1,8).getValues();
+    return json(rows.map(r=>({id:r[0],firstName:r[1],lastName:r[2],branch:r[3],slotId:r[4],slotName:r[5],date:r[6],time:r[7]})));
+  }
+  return json({error:"unknown type"});
+}
+
+function doPost(e) {
+  const data = JSON.parse(e.postData.contents);
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const action = data.action;
+  if (action === "book") {
+    const sh = getOrCreate(ss, SHEET_NAME, ["ID","ชื่อจริง","นามสกุล","สาขา","SlotID","ชื่อรอบ","วันที่","เวลา"]);
+    sh.appendRow([data.id,data.firstName,data.lastName,data.branch,data.slotId,data.slotName,data.date,data.time]);
+  }
+  if (action === "cancel") {
+    const sh = ss.getSheetByName(SHEET_NAME);
+    if (sh) deleteRowById(sh, data.id);
+  }
+  if (action === "saveSlot") {
+    const sh = getOrCreate(ss, SLOTS_SHEET, ["ID","ชื่อ","วันที่","เริ่ม","สิ้นสุด","ประเภท","จำนวนสูงสุด","สถานที่"]);
+    sh.appendRow([data.id,data.name,data.date,data.start,data.end,data.type,data.cap,data.location]);
+  }
+  if (action === "updateSlot") {
+    const sh = ss.getSheetByName(SLOTS_SHEET);
+    if (sh) { deleteRowById(sh, data.id); sh.appendRow([data.id,data.name,data.date,data.start,data.end,data.type,data.cap,data.location]); }
+  }
+  if (action === "deleteSlot") {
+    const sh = ss.getSheetByName(SLOTS_SHEET);
+    if (sh) deleteRowById(sh, data.id);
+    const bsh = ss.getSheetByName(SHEET_NAME);
+    if (bsh) deleteRowsBySlotId(bsh, data.id);
+  }
+  return json({success:true});
+}
+
+function getOrCreate(ss,name,headers){
+  let sh=ss.getSheetByName(name);
+  if(!sh){sh=ss.insertSheet(name);sh.appendRow(headers);}
+  return sh;
+}
+function deleteRowById(sh,id){
+  const data=sh.getDataRange().getValues();
+  for(let i=data.length-1;i>=1;i--){if(String(data[i][0])===String(id))sh.deleteRow(i+1);}
+}
+function deleteRowsBySlotId(sh,slotId){
+  const data=sh.getDataRange().getValues();
+  for(let i=data.length-1;i>=1;i--){if(String(data[i][4])===String(slotId))sh.deleteRow(i+1);}
+}
+function json(obj){
+  return ContentService.createTextOutput(JSON.stringify(obj)).setMimeType(ContentService.MimeType.JSON);
+}</div>
+    </div>
+    <div class="modal-actions"><button class="btn btn-primary btn-sm" onclick="document.getElementById('guide-modal').classList.remove('show')">เข้าใจแล้ว</button></div>
+  </div>
+</div>
+
+<div id="toast" class="toast"></div>
+
+<script>
+let slots = JSON.parse(localStorage.getItem('bk_slots') || '[]');
+let bookings = JSON.parse(localStorage.getItem('bk_bookings') || '[]');
+let sheetsUrl = localStorage.getItem('bk_url') || '';
+let adminPin = localStorage.getItem('bk_pin') || '123456';
+let adminOn = false;
+let currentUser = JSON.parse(localStorage.getItem('bk_user') || 'null');
+let editId = null;
+let pendingId = null;
+
+if (!slots.length) {
+  slots = [
+    {id:'s1',name:'สอบสัมภาษณ์ รอบเช้า',date:'2025-06-10',start:'09:00',end:'10:00',type:'exam',cap:8,location:'ห้องประชุม A'},
+    {id:'s2',name:'โรเพลย์ ทักษะการบริการ',date:'2025-06-10',start:'13:00',end:'14:30',type:'roleplay',cap:6,location:'ห้องฝึกอบรม B'},
+    {id:'s3',name:'กิจกรรม Team Building',date:'2025-06-11',start:'10:00',end:'12:00',type:'activity',cap:15,location:'ห้องอเนกประสงค์'},
+  ];
+  save('bk_slots', slots);
+}
+if (currentUser) showConfirmed();
+buildPins();
+if (sheetsUrl) { setSyncUI('spin'); fetchSheets(); }
+else renderSlots();
+
+function save(k,v){localStorage.setItem(k,JSON.stringify(v));}
+function booked(id){return bookings.filter(b=>b.slotId===id).length;}
+function userBooked(id){return currentUser&&bookings.some(b=>b.slotId===id&&b.firstName===currentUser.firstName&&b.lastName===currentUser.lastName);}
+function typeLabel(t){return{exam:'สอบ',roleplay:'โรเพลย์',activity:'กิจกรรม'}[t]||t;}
+function typeCls(t){return{exam:'b-exam',roleplay:'b-roleplay',activity:'b-activity'}[t]||'';}
+function fmtDate(d){if(!d)return'';const[y,m,day]=String(d).split('-');const mn=['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];return`${parseInt(day)} ${mn[parseInt(m)-1]} ${parseInt(y)+543}`;}
+
+function switchTab(t,el){
+  document.querySelectorAll('.tab').forEach(b=>b.classList.remove('active'));
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('panel-'+t).classList.add('active');
+  if(t==='employee') renderSlots();
+  if(t==='admin'&&adminOn) renderAdminSlots();
+  if(t==='bookings'){fillSlotFilter();renderBookings();}
+}
+
+function renderSlots(){
+  const c=document.getElementById('slots-container');
+  if(!slots.length){c.innerHTML='<div class="empty"><div class="empty-icon">📅</div><p>ยังไม่มีรอบที่เปิดจอง</p></div>';return;}
+  c.innerHTML=slots.map(s=>{
+    const b=booked(s.id),pct=s.cap>0?Math.round(b/s.cap*100):0,full=b>=s.cap,ub=userBooked(s.id);
+    const fc=pct>=100?'full':pct>=70?'mid':'ok';
+    return `<div class="card slot-card" onclick="${full&&!ub?'':(`openConfirm('${s.id}')`)}\" style="${full&&!ub?'opacity:.6;cursor:not-allowed':''}">
+      <div class="slot-header">
+        <div><span class="slot-name">${s.name}</span>${ub?'<span class="badge b-booked" style="margin-left:6px">✓ จองแล้ว</span>':''}</div>
+        <div class="badges">${full?'<span class="badge b-full">เต็ม</span>':''}<span class="badge ${typeCls(s.type)}">${typeLabel(s.type)}</span></div>
+      </div>
+      <div class="slot-meta">
+        <div class="meta">📅 ${fmtDate(s.date)}</div>
+        <div class="meta">🕐 ${s.start}–${s.end}</div>
+        <div class="meta">📍 ${s.location||'-'}</div>
+      </div>
+      <div class="cap-bar"><div class="cap-fill ${fc}" style="width:${pct}%"></div></div>
+      <div class="cap-text">${b}/${s.cap} คน</div>
+    </div>`;
+  }).join('');
+}
+
+function renderAdminSlots(){
+  const c=document.getElementById('admin-slots');
+  if(!slots.length){c.innerHTML='<div class="empty"><p>กด "+ เพิ่มรอบ" เพื่อสร้างรอบแรก</p></div>';return;}
+  c.innerHTML='<div class="card">'+slots.map(s=>`<div class="arow">
+    <div>
+      <div style="font-size:14px;font-weight:600;color:var(--text)">${s.name} <span class="badge ${typeCls(s.type)}" style="margin-left:4px">${typeLabel(s.type)}</span></div>
+      <div style="font-size:12px;color:var(--text2);margin-top:3px">${fmtDate(s.date)} · ${s.start}–${s.end} · ${s.location||'-'} · ${booked(s.id)}/${s.cap} คน</div>
+    </div>
+    <div style="display:flex;gap:6px">
+      <button class="btn btn-sm" onclick="editSlot('${s.id}')">✏️</button>
+      <button class="btn btn-danger btn-sm" onclick="delSlot('${s.id}')">🗑️</button>
+    </div>
+  </div>`).join('')+'</div>';
+}
+
+function fillSlotFilter(){
+  const s=document.getElementById('f-slot'),v=s.value;
+  s.innerHTML='<option value="">ทุกรอบ</option>'+slots.map(sl=>`<option value="${sl.id}">${sl.name}</option>`).join('');
+  s.value=v;
+}
+
+function renderBookings(){
+  const fb=document.getElementById('f-branch').value,fs=document.getElementById('f-slot').value;
+  let f=bookings;
+  if(fb) f=f.filter(b=>b.branch===fb);
+  if(fs) f=f.filter(b=>b.slotId===fs);
+  const tc=slots.reduce((a,s)=>a+s.cap,0);
+  document.getElementById('stats').innerHTML=`
+    <div class="stat"><div class="stat-n">${slots.length}</div><div class="stat-l">รอบทั้งหมด</div></div>
+    <div class="stat"><div class="stat-n">${bookings.length}</div><div class="stat-l">การจองทั้งหมด</div></div>
+    <div class="stat"><div class="stat-n">${Math.max(0,tc-bookings.length)}</div><div class="stat-l">ที่นั่งว่าง</div></div>`;
+  const list=document.getElementById('bookings-list');
+  if(!f.length){list.innerHTML='<div class="empty"><p>ยังไม่มีการจอง</p></div>';return;}
+  const g={};
+  f.forEach(b=>{if(!g[b.slotId])g[b.slotId]={slot:slots.find(s=>s.id===b.slotId),items:[]};g[b.slotId].items.push(b);});
+  list.innerHTML=Object.values(g).filter(x=>x.slot).map(x=>`
+    <div class="card" style="margin-bottom:10px">
+      <div style="font-size:14px;font-weight:600;margin-bottom:10px;color:var(--text)">${x.slot.name} <span style="color:var(--text2);font-weight:400">· ${x.items.length}/${x.slot.cap} คน</span></div>
+      ${x.items.map(b=>`<div class="booked-row">
+        <div style="display:flex;align-items:center;gap:8px">
+          <div class="avatar" style="width:28px;height:28px;font-size:12px">${b.firstName?b.firstName[0].toUpperCase():'?'}</div>
+          <div><div style="font-size:14px;font-weight:500;color:var(--text)">${b.firstName} ${b.lastName}</div>
+          <div style="font-size:12px;color:var(--text2)"><span class="badge b-branch">${b.branch||''}</span></div></div>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <span style="font-size:12px;color:var(--text2)">${b.time||''}</span>
+          <button class="btn btn-danger btn-sm" onclick="cancelBooking('${b.id}')">✕</button>
+        </div>
+      </div>`).join('')}
+    </div>`).join('');
+}
+
+function setUser(){
+  const fn=document.getElementById('emp-first').value.trim();
+  const ln=document.getElementById('emp-last').value.trim();
+  const br=document.getElementById('emp-branch').value;
+  if(!fn||!ln||!br){toast('กรุณากรอกข้อมูลให้ครบ',true);return;}
+  if(/[a-zA-Z]/.test(fn)||/[a-zA-Z]/.test(ln)){toast('กรุณากรอกชื่อภาษาไทยเท่านั้น',true);return;}
+  currentUser={firstName:fn,lastName:ln,branch:br};
+  save('bk_user',currentUser);
+  showConfirmed(); renderSlots();
+}
+function showConfirmed(){
+  if(!currentUser)return;
+  document.getElementById('u-name').textContent=currentUser.firstName+' '+currentUser.lastName;
+  document.getElementById('av').textContent=currentUser.firstName[0];
+  document.getElementById('u-branch').textContent=currentUser.branch;
+  document.getElementById('emp-confirmed').style.display='flex';
+  document.getElementById('emp-form-area').style.display='none';
+}
+function clearUser(){
+  currentUser=null;localStorage.removeItem('bk_user');
+  document.getElementById('emp-confirmed').style.display='none';
+  document.getElementById('emp-form-area').style.display='block';
+  document.getElementById('emp-first').value='';
+  document.getElementById('emp-last').value='';
+  document.getElementById('emp-branch').value='';
+  renderSlots();
+}
+
+function buildPins(){
+  const c=document.getElementById('pin-boxes');c.innerHTML='';
+  for(let i=0;i<6;i++){
+    const inp=document.createElement('input');
+    inp.type='password';inp.maxLength=1;inp.inputMode='numeric';inp.className='pin-box';inp.id='p'+i;
+    inp.addEventListener('input',e=>{if(e.target.value&&i<5)document.getElementById('p'+(i+1)).focus();});
+    inp.addEventListener('keydown',e=>{if(e.key==='Backspace'&&!e.target.value&&i>0)document.getElementById('p'+(i-1)).focus();if(e.key==='Enter')verifyPin();});
+    c.appendChild(inp);
+  }
+}
+function getPin(){return Array.from({length:6},(_,i)=>document.getElementById('p'+i)?.value||'').join('');}
+function verifyPin(){
+  if(getPin()===adminPin){
+    adminOn=true;
+    document.getElementById('admin-lock').style.display='none';
+    document.getElementById('admin-content').style.display='block';
+    if(sheetsUrl)document.getElementById('sheets-url').value=sheetsUrl;
+    renderAdminSlots();
+    document.getElementById('pin-err').textContent='';
+  } else {
+    document.getElementById('pin-err').textContent='รหัสไม่ถูกต้อง';
+    for(let i=0;i<6;i++){const el=document.getElementById('p'+i);if(el)el.value='';}
+    document.getElementById('p0').focus();
+  }
+}
+function lockAdmin(){
+  adminOn=false;
+  document.getElementById('admin-lock').style.display='block';
+  document.getElementById('admin-content').style.display='none';
+  for(let i=0;i<6;i++){const el=document.getElementById('p'+i);if(el)el.value='';}
+}
+function changePin(){
+  const p1=document.getElementById('new-pin').value,p2=document.getElementById('new-pin2').value;
+  if(!/^\d{6}$/.test(p1)){toast('รหัสต้องเป็นตัวเลข 6 หลัก',true);return;}
+  if(p1!==p2){toast('รหัสไม่ตรงกัน',true);return;}
+  adminPin=p1;localStorage.setItem('bk_pin',adminPin);
+  document.getElementById('new-pin').value='';document.getElementById('new-pin2').value='';
+  toast('เปลี่ยนรหัสสำเร็จ');
+}
+
+function openConfirm(id){
+  if(!currentUser){toast('กรุณากรอกข้อมูลก่อนจอง',true);return;}
+  if(userBooked(id)){toast('คุณจองรอบนี้ไปแล้ว',true);return;}
+  const s=slots.find(s=>s.id===id);if(!s)return;
+  pendingId=id;
+  document.getElementById('confirm-details').innerHTML=`
+    <div style="display:flex;flex-direction:column;gap:6px">
+      <div><strong>${s.name}</strong></div>
+      <div>👤 ${currentUser.firstName} ${currentUser.lastName}</div>
+      <div>🏢 สาขา${currentUser.branch}</div>
+      <div>📅 ${fmtDate(s.date)}</div>
+      <div>🕐 ${s.start}–${s.end}</div>
+      <div>📍 ${s.location||'-'}</div>
+    </div>`;
+  document.getElementById('confirm-modal').classList.add('show');
+}
+
+async function confirmBooking(){
+  const s=slots.find(s=>s.id===pendingId);if(!s)return;
+  const btn=document.getElementById('confirm-btn');
+  btn.disabled=true;btn.textContent='กำลังจอง...';
+  const bk={id:'b'+Date.now(),firstName:currentUser.firstName,lastName:currentUser.lastName,branch:currentUser.branch,slotId:s.id,slotName:s.name,date:s.date,time:s.start+'–'+s.end,type:s.type,location:s.location||''};
+  bookings.push(bk);save('bk_bookings',bookings);
+  document.getElementById('confirm-modal').classList.remove('show');
+  pendingId=null;renderSlots();
+  toast('🎉 จองรอบสำเร็จ! '+s.name);
+  btn.disabled=false;btn.textContent='ยืนยันจอง';
+  if(sheetsUrl) await apiPost({action:'book',...bk});
+}
+
+async function cancelBooking(id){
+  bookings=bookings.filter(b=>b.id!==id);save('bk_bookings',bookings);
+  renderBookings();renderSlots();toast('ยกเลิกการจองแล้ว');
+  if(sheetsUrl) await apiPost({action:'cancel',id});
+}
+
+function openAddSlot(){
+  editId=null;document.getElementById('modal-title').textContent='เพิ่มรอบกิจกรรม';
+  ['f-name','f-date','f-start','f-end','f-location'].forEach(i=>document.getElementById(i).value='');
+  document.getElementById('f-cap').value='10';document.getElementById('f-type').value='exam';
+  document.getElementById('slot-modal').classList.add('show');
+}
+function editSlot(id){
+  const s=slots.find(s=>s.id===id);if(!s)return;
+  editId=id;document.getElementById('modal-title').textContent='แก้ไขรอบกิจกรรม';
+  document.getElementById('f-name').value=s.name;document.getElementById('f-date').value=s.date;
+  document.getElementById('f-start').value=s.start;document.getElementById('f-end').value=s.end;
+  document.getElementById('f-cap').value=s.cap;document.getElementById('f-type').value=s.type;
+  document.getElementById('f-location').value=s.location||'';
+  document.getElementById('slot-modal').classList.add('show');
+}
+function closeModal(){document.getElementById('slot-modal').classList.remove('show');}
+async function saveSlot(){
+  const name=document.getElementById('f-name').value.trim(),date=document.getElementById('f-date').value;
+  const start=document.getElementById('f-start').value,end=document.getElementById('f-end').value;
+  const cap=parseInt(document.getElementById('f-cap').value),type=document.getElementById('f-type').value;
+  const location=document.getElementById('f-location').value.trim();
+  if(!name||!date||!start||!end||!cap){toast('กรุณากรอกข้อมูลให้ครบ',true);return;}
+  if(editId){
+    const s=slots.find(s=>s.id===editId);Object.assign(s,{name,date,start,end,cap,type,location});
+    if(sheetsUrl) await apiPost({action:'updateSlot',...s});
+  } else {
+    const ns={id:'s'+Date.now(),name,date,start,end,type,cap,location};slots.push(ns);
+    if(sheetsUrl) await apiPost({action:'saveSlot',...ns});
+  }
+  save('bk_slots',slots);closeModal();renderAdminSlots();
+  toast(editId?'แก้ไขรอบแล้ว':'เพิ่มรอบใหม่แล้ว');
+}
+async function delSlot(id){
+  if(!confirm('ต้องการลบรอบนี้? การจองทั้งหมดในรอบนี้จะถูกลบด้วย'))return;
+  slots=slots.filter(s=>s.id!==id);bookings=bookings.filter(b=>b.slotId!==id);
+  save('bk_slots',slots);save('bk_bookings',bookings);
+  renderAdminSlots();renderSlots();toast('ลบรอบแล้ว');
+  if(sheetsUrl) await apiPost({action:'deleteSlot',id});
+}
+
+function saveConfig(){
+  sheetsUrl=document.getElementById('sheets-url').value.trim();
+  localStorage.setItem('bk_url',sheetsUrl);
+  if(sheetsUrl){toast('บันทึก URL แล้ว กำลังโหลดข้อมูล...');fetchSheets();}
+}
+
+async function fetchSheets(){
+  if(!sheetsUrl)return;
+  setSyncUI('spin');
+  try{
+    const [sr,br]=await Promise.all([
+      fetch(sheetsUrl+'?type=slots').then(r=>r.json()).catch(()=>null),
+      fetch(sheetsUrl+'?type=bookings').then(r=>r.json()).catch(()=>null)
+    ]);
+    if(sr&&Array.isArray(sr)&&sr.length){slots=sr;save('bk_slots',slots);}
+    if(br&&Array.isArray(br)){bookings=br;save('bk_bookings',bookings);}
+    setSyncUI('ok');renderSlots();
+    if(adminOn)renderAdminSlots();
+    if(document.getElementById('panel-bookings').classList.contains('active')){fillSlotFilter();renderBookings();}
+  }catch(e){setSyncUI('err');}
+}
+function manualSync(){if(sheetsUrl)fetchSheets();else toast('กรุณาตั้งค่า URL ก่อน',true);}
+
+async function apiPost(data){
+  if(!sheetsUrl)return;
+  try{await fetch(sheetsUrl,{method:'POST',mode:'no-cors',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});}catch(e){}
+}
+
+function setSyncUI(state){
+  const d=document.getElementById('sync-dot'),t=document.getElementById('sync-text');
+  d.className='sync-dot';
+  if(state==='ok'){t.textContent='ซิงค์แล้ว';}
+  else if(state==='spin'){d.classList.add('spin');t.textContent='กำลังซิงค์...';}
+  else if(state==='err'){d.classList.add('off');t.textContent='ซิงค์ไม่ได้';}
+  else{d.classList.add('off');t.textContent='ยังไม่เชื่อม Sheets';}
+}
+
+let toastTimer;
+function toast(msg,isErr){
+  const el=document.getElementById('toast');
+  el.textContent=msg;el.className='toast'+(isErr?' err':'');
+  clearTimeout(toastTimer);
+  setTimeout(()=>el.classList.add('show'),10);
+  toastTimer=setTimeout(()=>el.classList.remove('show'),3000);
+}
+
+// close overlays on backdrop click
+document.querySelectorAll('.overlay').forEach(o=>{
+  o.addEventListener('click',e=>{if(e.target===o)o.classList.remove('show');});
+});
+</script>
+</body>
+</html>
