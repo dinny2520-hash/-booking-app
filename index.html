@@ -477,6 +477,7 @@ setInterval(()=>{ fetchSheets(); }, 15000);
 function save(k,v){localStorage.setItem(k,JSON.stringify(v));}
 function booked(id){return bookings.filter(b=>b.slotId===id).length;}
 function userBooked(id){return currentUser&&bookings.some(b=>b.slotId===id&&b.firstName===currentUser.firstName&&b.lastName===currentUser.lastName);}
+function userHasAnyBooking(){return currentUser&&bookings.some(b=>b.firstName===currentUser.firstName&&b.lastName===currentUser.lastName);}
 function typeLabel(t){return{exam:'สอบ',roleplay:'โรเพลย์',activity:'กิจกรรม'}[t]||t;}
 function typeCls(t){return{exam:'b-exam',roleplay:'b-roleplay',activity:'b-activity'}[t]||'';}
 function fmtDate(d){if(!d)return'';const[y,m,day]=String(d).split('-');const mn=['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];return`${parseInt(day)} ${mn[parseInt(m)-1]} ${parseInt(y)+543}`;}
@@ -493,11 +494,13 @@ function switchTab(t,el){
 function renderSlots(){
   const c=document.getElementById('slots-container');
   if(!slots.length){c.innerHTML='<div class="empty"><div class="empty-icon">📅</div><p>ยังไม่มีรอบที่เปิดจอง</p></div>';return;}
+  const alreadyBooked = userHasAnyBooking();
   c.innerHTML=slots.map(s=>{
     const b=booked(s.id),pct=s.cap>0?Math.round(b/s.cap*100):0,full=b>=s.cap,ub=userBooked(s.id);
     const fc=pct>=100?'full':pct>=70?'mid':'ok';
-    const clickable = !full && !ub;
-    return `<div class="card${clickable?' slot-card':''}" ${clickable?`onclick="openConfirm('${s.id}')"`:''} style="${full&&!ub?'opacity:.6;cursor:not-allowed':ub?'cursor:default':''}">
+    const clickable = !full && !ub && !alreadyBooked;
+    const lockedByOther = !ub && alreadyBooked;
+    return `<div class="card${clickable?' slot-card':''}" ${clickable?`onclick="openConfirm('${s.id}')"`:''} style="${full&&!ub&&!alreadyBooked?'opacity:.6;cursor:not-allowed':!clickable&&!ub?'opacity:.5;cursor:not-allowed':ub?'cursor:default':''}">
       <div class="slot-header">
         <div><span class="slot-name">${s.name}</span>${ub?'<span class="badge b-booked" style="margin-left:6px">✓ จองแล้ว</span>':''}</div>
         <div class="badges">${full&&!ub?'<span class="badge b-full">เต็ม</span>':''}<span class="badge ${typeCls(s.type)}">${typeLabel(s.type)}</span></div>
@@ -512,6 +515,13 @@ function renderSlots(){
       <div class="cap-text">${b}/${s.cap} คน</div>
     </div>`;
   }).join('');
+  // แจ้งเตือนถ้าจองแล้ว
+  if(alreadyBooked){
+    const mybk = bookings.find(b=>b.firstName===currentUser.firstName&&b.lastName===currentUser.lastName);
+    if(mybk) c.insertAdjacentHTML('afterbegin',`<div style="background:#E1F5EE;border:0.5px solid #9FE1CB;border-radius:var(--radius-lg);padding:12px 14px;margin-bottom:10px;font-size:13px;color:#085041">
+      ✅ คุณได้จอง <strong>${mybk.slotName}</strong> ไว้แล้ว<br>1 ชื่อจองได้เพียง 1 รอบเท่านั้น
+    </div>`);
+  }
 }
 
 function renderAdminSlots(){
@@ -634,6 +644,7 @@ function changePin(){
 
 function openConfirm(id){
   if(!currentUser){toast('กรุณากรอกข้อมูลก่อนจอง',true);return;}
+  if(userHasAnyBooking()){toast('คุณได้จองไปแล้ว 1 รอบ — 1 ชื่อจองได้เพียง 1 รอบเท่านั้น',true);return;}
   if(userBooked(id)){toast('คุณจองรอบนี้ไปแล้ว',true);return;}
   const s=slots.find(s=>s.id===id);if(!s)return;
   pendingId=id;
@@ -651,6 +662,10 @@ function openConfirm(id){
 
 async function confirmBooking(){
   const s=slots.find(s=>s.id===pendingId);if(!s)return;
+  if(userHasAnyBooking()){
+    document.getElementById('confirm-modal').classList.remove('show');
+    toast('คุณได้จองไปแล้ว 1 รอบ — ไม่สามารถจองซ้ำได้',true);return;
+  }
   const btn=document.getElementById('confirm-btn');
   btn.disabled=true;btn.textContent='กำลังจอง...';
   const bk={id:'b'+Date.now(),firstName:currentUser.firstName,lastName:currentUser.lastName,branch:currentUser.branch,slotId:s.id,slotName:s.name,date:s.date,time:s.start+'–'+s.end,type:s.type,location:s.location||''};
