@@ -304,60 +304,71 @@ function doGet(e) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const type = e.parameter.type;
   const action = e.parameter.action;
+  const cb = e.parameter.callback; // JSONP support
 
-  // READ
   if (type === "slots") {
     const sh = ss.getSheetByName(SLOTS_SHEET);
-    if (!sh || sh.getLastRow() < 2) return cors([]);
+    if (!sh || sh.getLastRow() < 2) return out([], cb);
     const rows = sh.getRange(2,1,sh.getLastRow()-1,8).getValues();
-    return cors(rows.map(r=>({id:r[0],name:r[1],date:r[2],start:r[3],end:r[4],type:r[5],cap:Number(r[6]),location:r[7]})));
+    return out(rows.map(r=>({
+      id:r[0],name:r[1],date:r[2],start:r[3],
+      end:r[4],type:r[5],cap:Number(r[6]),location:r[7]
+    })), cb);
   }
   if (type === "bookings") {
     const sh = ss.getSheetByName(SHEET_NAME);
-    if (!sh || sh.getLastRow() < 2) return cors([]);
+    if (!sh || sh.getLastRow() < 2) return out([], cb);
     const rows = sh.getRange(2,1,sh.getLastRow()-1,8).getValues();
-    return cors(rows.map(r=>({id:r[0],firstName:r[1],lastName:r[2],branch:r[3],slotId:r[4],slotName:r[5],date:r[6],time:r[7]})));
+    return out(rows.map(r=>({
+      id:r[0],firstName:r[1],lastName:r[2],branch:r[3],
+      slotId:r[4],slotName:r[5],date:r[6],time:r[7]
+    })), cb);
   }
-
-  // WRITE via GET (mobile-friendly, avoids CORS preflight)
   if (action && e.parameter.data) {
     const data = JSON.parse(decodeURIComponent(e.parameter.data));
     handleAction(ss, action, data);
-    return cors({success:true});
+    return out({success:true}, cb);
   }
-
-  return cors({error:"unknown"});
+  return out({error:"unknown"}, cb);
 }
 
 function doPost(e) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const data = JSON.parse(e.postData.contents);
   handleAction(ss, data.action, data);
-  return cors({success:true});
+  return out({success:true}, null);
 }
 
 function handleAction(ss, action, data) {
   if (action === "book") {
-    const sh = getOrCreate(ss, SHEET_NAME, ["ID","ชื่อจริง","นามสกุล","สาขา","SlotID","ชื่อรอบ","วันที่","เวลา"]);
-    sh.appendRow([data.id,data.firstName,data.lastName,data.branch,data.slotId,data.slotName,data.date,data.time]);
+    const sh = getOrCreate(ss, SHEET_NAME,
+      ["ID","ชื่อจริง","นามสกุล","สาขา","SlotID","ชื่อรอบ","วันที่","เวลา"]);
+    sh.appendRow([data.id,data.firstName,data.lastName,data.branch,
+      data.slotId,data.slotName,data.date,data.time]);
   }
   if (action === "cancel") {
     const sh = ss.getSheetByName(SHEET_NAME);
-    if (sh) deleteRowById(sh, data.id);
+    if (sh) delById(sh, data.id);
   }
   if (action === "saveSlot") {
-    const sh = getOrCreate(ss, SLOTS_SHEET, ["ID","ชื่อ","วันที่","เริ่ม","สิ้นสุด","ประเภท","จำนวนสูงสุด","สถานที่"]);
-    sh.appendRow([data.id,data.name,data.date,data.start,data.end,data.type,data.cap,data.location]);
+    const sh = getOrCreate(ss, SLOTS_SHEET,
+      ["ID","ชื่อ","วันที่","เริ่ม","สิ้นสุด","ประเภท","จำนวนสูงสุด","สถานที่"]);
+    sh.appendRow([data.id,data.name,data.date,data.start,
+      data.end,data.type,data.cap,data.location]);
   }
   if (action === "updateSlot") {
     const sh = ss.getSheetByName(SLOTS_SHEET);
-    if (sh) { deleteRowById(sh, data.id); sh.appendRow([data.id,data.name,data.date,data.start,data.end,data.type,data.cap,data.location]); }
+    if (sh) {
+      delById(sh, data.id);
+      sh.appendRow([data.id,data.name,data.date,data.start,
+        data.end,data.type,data.cap,data.location]);
+    }
   }
   if (action === "deleteSlot") {
     const sh = ss.getSheetByName(SLOTS_SHEET);
-    if (sh) deleteRowById(sh, data.id);
+    if (sh) delById(sh, data.id);
     const bsh = ss.getSheetByName(SHEET_NAME);
-    if (bsh) deleteRowsBySlotId(bsh, data.id);
+    if (bsh) delBySlot(bsh, data.id);
   }
 }
 
@@ -366,17 +377,23 @@ function getOrCreate(ss,name,headers){
   if(!sh){sh=ss.insertSheet(name);sh.appendRow(headers);}
   return sh;
 }
-function deleteRowById(sh,id){
+function delById(sh,id){
   const d=sh.getDataRange().getValues();
-  for(let i=d.length-1;i>=1;i--){if(String(d[i][0])===String(id))sh.deleteRow(i+1);}
+  for(let i=d.length-1;i>=1;i--)
+    if(String(d[i][0])===String(id)) sh.deleteRow(i+1);
 }
-function deleteRowsBySlotId(sh,slotId){
+function delBySlot(sh,sid){
   const d=sh.getDataRange().getValues();
-  for(let i=d.length-1;i>=1;i--){if(String(d[i][4])===String(slotId))sh.deleteRow(i+1);}
+  for(let i=d.length-1;i>=1;i--)
+    if(String(d[i][4])===String(sid)) sh.deleteRow(i+1);
 }
-function cors(obj){
-  return ContentService.createTextOutput(JSON.stringify(obj))
-    .setMimeType(ContentService.MimeType.JSON);
+function out(obj, cb){
+  const json = JSON.stringify(obj);
+  const body = cb ? cb+'('+json+')' : json;
+  const mime = cb
+    ? ContentService.MimeType.JAVASCRIPT
+    : ContentService.MimeType.JSON;
+  return ContentService.createTextOutput(body).setMimeType(mime);
 }</div>
     </div>
     <div class="modal-actions"><button class="btn btn-primary btn-sm" onclick="document.getElementById('guide-modal').classList.remove('show')">เข้าใจแล้ว</button></div>
@@ -465,16 +482,17 @@ function renderSlots(){
   c.innerHTML=slots.map(s=>{
     const b=booked(s.id),pct=s.cap>0?Math.round(b/s.cap*100):0,full=b>=s.cap,ub=userBooked(s.id);
     const fc=pct>=100?'full':pct>=70?'mid':'ok';
-    return `<div class="card slot-card" onclick="${full&&!ub?'':(`openConfirm('${s.id}')`)}\" style="${full&&!ub?'opacity:.6;cursor:not-allowed':''}">
+    return `<div class="card${!full||ub?' slot-card':''}" onclick="${full&&!ub?'':ub?'':(`openConfirm('${s.id}')`)}\" style="${full&&!ub?'opacity:.6;cursor:not-allowed':''}">
       <div class="slot-header">
         <div><span class="slot-name">${s.name}</span>${ub?'<span class="badge b-booked" style="margin-left:6px">✓ จองแล้ว</span>':''}</div>
-        <div class="badges">${full?'<span class="badge b-full">เต็ม</span>':''}<span class="badge ${typeCls(s.type)}">${typeLabel(s.type)}</span></div>
+        <div class="badges">${full&&!ub?'<span class="badge b-full">เต็ม</span>':''}<span class="badge ${typeCls(s.type)}">${typeLabel(s.type)}</span></div>
       </div>
       <div class="slot-meta">
         <div class="meta">📅 ${fmtDate(s.date)}</div>
         <div class="meta">🕐 ${s.start}–${s.end}</div>
         <div class="meta">📍 ${s.location||'-'}</div>
       </div>
+      ${ub?`<div style="margin-top:8px;font-size:12px;color:var(--text2);background:var(--bg2);padding:7px 10px;border-radius:var(--radius)">หากต้องการยกเลิก กรุณาติดต่อผู้ดูแลระบบ</div>`:''}
       <div class="cap-bar"><div class="cap-fill ${fc}" style="width:${pct}%"></div></div>
       <div class="cap-text">${b}/${s.cap} คน</div>
     </div>`;
@@ -525,7 +543,7 @@ function renderBookings(){
         </div>
         <div style="display:flex;align-items:center;gap:8px">
           <span style="font-size:12px;color:var(--text2)">${b.time||''}</span>
-          <button class="btn btn-danger btn-sm" onclick="cancelBooking('${b.id}')">✕</button>
+          <button class="btn btn-danger btn-sm" onclick="cancelBooking('${b.id}')">ยกเลิก</button>
         </div>
       </div>`).join('')}
     </div>`).join('');
