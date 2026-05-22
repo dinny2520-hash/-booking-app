@@ -79,6 +79,13 @@
   .form-3{grid-template-columns:1fr 1fr 1fr}
   @media(max-width:480px){.form-row,.form-3{grid-template-columns:1fr}}
   .section-title{font-size:17px;font-weight:600;color:var(--text);margin-bottom:1rem}
+  .dd-wrap{position:relative;user-select:none}
+  .dd-btn{width:100%;padding:9px 12px;border:0.5px solid var(--border2);border-radius:var(--radius);background:var(--bg);color:var(--text);font-size:14px;font-family:var(--font);text-align:left;cursor:pointer;display:flex;justify-content:space-between;align-items:center;-webkit-tap-highlight-color:transparent;touch-action:manipulation}
+  .dd-ph{color:var(--text3) !important}
+  .dd-list{position:absolute;top:calc(100% + 3px);left:0;right:0;background:var(--bg);border:0.5px solid var(--border2);border-radius:var(--radius);z-index:600;overflow:hidden;max-height:260px;overflow-y:auto;display:none;-webkit-overflow-scrolling:touch;box-shadow:0 4px 16px rgba(0,0,0,0.12)}
+  .dd-list.open{display:block}
+  .dd-opt{padding:12px 14px;font-size:14px;color:var(--text);cursor:pointer;font-family:var(--font);-webkit-tap-highlight-color:transparent;touch-action:manipulation}
+  .dd-opt:active,.dd-opt.sel{background:var(--bg2)}
   .empty{text-align:center;padding:3rem 1rem;color:var(--text2)}
   .empty-icon{font-size:40px;margin-bottom:10px;color:var(--text3)}
   /* modal */
@@ -156,12 +163,12 @@
       <div class="form-row form-1" style="margin-bottom:10px">
         <div>
           <label>สาขา *</label>
-          <select id="emp-branch">
-            <option value="">-- เลือกสาขา --</option>
-            <option>ปลวกแดง</option><option>ซีเค</option><option>โรงงานปลวกแดง</option>
-            <option>ระยอง</option><option>บ้านค่าย</option><option>นิคมพัฒนา</option>
-            <option>มาบตาพุด</option><option>โรงงานระยอง</option>
-          </select>
+          <div class="dd-wrap" id="dd-emp-branch">
+            <button type="button" class="dd-btn dd-ph" id="dd-emp-branch-btn" onclick="toggleDD('dd-emp-branch')">
+              <span id="dd-emp-branch-label">-- เลือกสาขา --</span><span style="font-size:10px;color:var(--text3)">▼</span>
+            </button>
+            <div class="dd-list" id="dd-emp-branch-list"></div>
+          </div>
         </div>
       </div>
       <button class="btn btn-primary" onclick="setUser()" style="width:100%">✓ ยืนยันข้อมูล</button>
@@ -223,13 +230,18 @@
     </div>
     <div class="stats" id="stats"></div>
     <div class="filter-row">
-      <select id="f-branch" onchange="renderBookings()">
-        <option value="">ทุกสาขา</option>
-        <option>ปลวกแดง</option><option>ซีเค</option><option>โรงงานปลวกแดง</option>
-        <option>ระยอง</option><option>บ้านค่าย</option><option>นิคมพัฒนา</option>
-        <option>มาบตาพุด</option><option>โรงงานระยอง</option>
-      </select>
-      <select id="f-slot" onchange="renderBookings()"><option value="">ทุกรอบ</option></select>
+      <div class="dd-wrap" id="dd-f-branch" style="flex:1;min-width:130px">
+        <button type="button" class="dd-btn" id="dd-f-branch-btn" onclick="toggleDD('dd-f-branch')">
+          <span id="dd-f-branch-label">ทุกสาขา</span><span style="font-size:10px;color:var(--text3)">▼</span>
+        </button>
+        <div class="dd-list" id="dd-f-branch-list"></div>
+      </div>
+      <div class="dd-wrap" id="dd-f-slot" style="flex:1;min-width:130px">
+        <button type="button" class="dd-btn" id="dd-f-slot-btn" onclick="toggleDD('dd-f-slot')">
+          <span id="dd-f-slot-label">ทุกรอบ</span><span style="font-size:10px;color:var(--text3)">▼</span>
+        </button>
+        <div class="dd-list" id="dd-f-slot-list"></div>
+      </div>
     </div>
     <div class="section-title">รายชื่อผู้จองทั้งหมด</div>
     <div id="bookings-list"></div>
@@ -374,6 +386,40 @@ function cors(obj){
 <div id="toast" class="toast"></div>
 
 <script>
+const BRANCHES=['ปลวกแดง','ซีเค','โรงงานปลวกแดง','ระยอง','บ้านค่าย','นิคมพัฒนา','มาบตาพุด','โรงงานระยอง'];
+let ddVals={'dd-emp-branch':'','dd-f-branch':'','dd-f-slot':''};
+
+function buildDD(id,opts,onChange){
+  const list=document.getElementById(id+'-list');if(!list)return;
+  list.innerHTML='';
+  opts.forEach(o=>{
+    const d=document.createElement('div');d.className='dd-opt';d.textContent=o.label;
+    d.addEventListener('click',e=>{e.stopPropagation();pickDD(id,o.value,o.label);if(onChange)onChange(o.value);});
+    list.appendChild(d);
+  });
+}
+function toggleDD(id){
+  const list=document.getElementById(id+'-list');if(!list)return;
+  const wasOpen=list.classList.contains('open');
+  document.querySelectorAll('.dd-list.open').forEach(l=>l.classList.remove('open'));
+  if(!wasOpen)list.classList.add('open');
+}
+function pickDD(id,val,label){
+  ddVals[id]=val;
+  const lel=document.getElementById(id+'-label');
+  const btn=document.getElementById(id+'-btn');
+  if(lel)lel.textContent=label;
+  if(btn){if(!val)btn.style.color='var(--text3)';else btn.style.color='';}
+  const list=document.getElementById(id+'-list');if(list)list.classList.remove('open');
+}
+document.addEventListener('click',e=>{
+  if(!e.target.closest('.dd-wrap'))
+    document.querySelectorAll('.dd-list.open').forEach(l=>l.classList.remove('open'));
+},{passive:true});
+
+buildDD('dd-emp-branch',[{value:'',label:'-- เลือกสาขา --'},...BRANCHES.map(b=>({value:b,label:b}))],null);
+buildDD('dd-f-branch',[{value:'',label:'ทุกสาขา'},...BRANCHES.map(b=>({value:b,label:b}))],()=>renderBookings());
+
 let slots = JSON.parse(localStorage.getItem('bk_slots') || '[]');
 let bookings = JSON.parse(localStorage.getItem('bk_bookings') || '[]');
 let sheetsUrl = localStorage.getItem('bk_url') || '';
@@ -451,13 +497,11 @@ function renderAdminSlots(){
 }
 
 function fillSlotFilter(){
-  const s=document.getElementById('f-slot'),v=s.value;
-  s.innerHTML='<option value="">ทุกรอบ</option>'+slots.map(sl=>`<option value="${sl.id}">${sl.name}</option>`).join('');
-  s.value=v;
+  buildDD('dd-f-slot',[{value:'',label:'ทุกรอบ'},...slots.map(s=>({value:s.id,label:s.name}))],()=>renderBookings());
 }
 
 function renderBookings(){
-  const fb=document.getElementById('f-branch').value,fs=document.getElementById('f-slot').value;
+  const fb=ddVals['dd-f-branch'],fs=ddVals['dd-f-slot'];
   let f=bookings;
   if(fb) f=f.filter(b=>b.branch===fb);
   if(fs) f=f.filter(b=>b.slotId===fs);
@@ -490,7 +534,7 @@ function renderBookings(){
 function setUser(){
   const fn=document.getElementById('emp-first').value.trim();
   const ln=document.getElementById('emp-last').value.trim();
-  const br=document.getElementById('emp-branch').value;
+  const br=ddVals['dd-emp-branch'];
   if(!fn||!ln||!br){toast('กรุณากรอกข้อมูลให้ครบ',true);return;}
   if(/[a-zA-Z]/.test(fn)||/[a-zA-Z]/.test(ln)){toast('กรุณากรอกชื่อภาษาไทยเท่านั้น',true);return;}
   currentUser={firstName:fn,lastName:ln,branch:br};
@@ -511,7 +555,7 @@ function clearUser(){
   document.getElementById('emp-form-area').style.display='block';
   document.getElementById('emp-first').value='';
   document.getElementById('emp-last').value='';
-  document.getElementById('emp-branch').value='';
+  pickDD('dd-emp-branch','','-- เลือกสาขา --');
   renderSlots();
 }
 
@@ -637,13 +681,29 @@ function saveConfig(){
   if(sheetsUrl){toast('บันทึก URL แล้ว กำลังโหลดข้อมูล...');fetchSheets();}
 }
 
+function jsonpGet(url){
+  return new Promise((res,rej)=>{
+    const cb='cb'+Date.now()+'_'+Math.floor(Math.random()*1e5);
+    const sc=document.createElement('script');
+    const tid=setTimeout(()=>{cleanup();rej('timeout');},12000);
+    function cleanup(){try{delete window[cb];document.head.removeChild(sc);}catch(e){}clearTimeout(tid);}
+    window[cb]=d=>{cleanup();res(d);};
+    sc.src=url+(url.includes('?')?'&':'?')+'callback='+cb;
+    sc.onerror=()=>{cleanup();rej('error');};
+    document.head.appendChild(sc);
+  });
+}
+async function smartGet(url){
+  try{const r=await fetch(url);if(!r.ok)throw r;return await r.json();}
+  catch(e){return await jsonpGet(url);}
+}
 async function fetchSheets(){
   if(!sheetsUrl)return;
   setSyncUI('spin');
   try{
-    const [sr,br]=await Promise.all([
-      fetch(sheetsUrl+'?type=slots',{method:'GET'}).then(r=>r.json()).catch(()=>null),
-      fetch(sheetsUrl+'?type=bookings',{method:'GET'}).then(r=>r.json()).catch(()=>null)
+    const[sr,br]=await Promise.all([
+      smartGet(sheetsUrl+'?type=slots').catch(()=>null),
+      smartGet(sheetsUrl+'?type=bookings').catch(()=>null)
     ]);
     if(sr&&Array.isArray(sr)&&sr.length){slots=sr;save('bk_slots',slots);}
     if(br&&Array.isArray(br)){bookings=br;save('bk_bookings',bookings);}
@@ -653,13 +713,10 @@ async function fetchSheets(){
   }catch(e){setSyncUI('err');}
 }
 function manualSync(){if(sheetsUrl)fetchSheets();else toast('กรุณาตั้งค่า URL ก่อน',true);}
-
 async function apiPost(data){
   if(!sheetsUrl)return;
-  try{
-    const url=sheetsUrl+'?action='+data.action+'&data='+encodeURIComponent(JSON.stringify(data));
-    await fetch(url,{method:'GET'}).catch(()=>null);
-  }catch(e){}
+  const url=sheetsUrl+'?action='+encodeURIComponent(data.action)+'&data='+encodeURIComponent(JSON.stringify(data));
+  try{await smartGet(url);}catch(e){}
 }
 
 function setSyncUI(state){
