@@ -283,6 +283,17 @@
   </div>
 </div>
 
+<!-- SUCCESS MODAL -->
+<div class="overlay" id="success-modal">
+  <div class="modal" style="max-width:360px;text-align:center">
+    <div style="font-size:56px;margin-bottom:12px">🎉</div>
+    <div style="font-size:18px;font-weight:700;color:var(--text);margin-bottom:8px">จองรอบสำเร็จ!</div>
+    <div id="success-detail" style="font-size:14px;color:var(--text2);line-height:1.8;margin-bottom:20px"></div>
+    <div style="font-size:12px;color:var(--text3);background:var(--bg2);padding:8px 12px;border-radius:var(--radius);margin-bottom:20px">หากต้องการยกเลิก กรุณาติดต่อผู้ดูแลระบบ</div>
+    <button class="btn btn-primary" style="width:100%;font-size:15px;padding:13px" onclick="doneBooking()">✓ เสร็จสิ้น ปิดหน้านี้</button>
+  </div>
+</div>
+
 <div class="overlay" id="guide-modal">
   <div class="modal" style="max-width:520px">
     <div class="modal-title">📊 คู่มือเชื่อมต่อ Google Sheets (Real-time)</div>
@@ -483,7 +494,8 @@ function renderSlots(){
   c.innerHTML=slots.map(s=>{
     const b=booked(s.id),pct=s.cap>0?Math.round(b/s.cap*100):0,full=b>=s.cap,ub=userBooked(s.id);
     const fc=pct>=100?'full':pct>=70?'mid':'ok';
-    return `<div class="card${!full||ub?' slot-card':''}" onclick="${full&&!ub?'':ub?'':(`openConfirm('${s.id}')`)}\" style="${full&&!ub?'opacity:.6;cursor:not-allowed':''}">
+    const clickable = !full && !ub;
+    return `<div class="card${clickable?' slot-card':''}" ${clickable?`onclick="openConfirm('${s.id}')"`:''} style="${full&&!ub?'opacity:.6;cursor:not-allowed':ub?'cursor:default':''}">
       <div class="slot-header">
         <div><span class="slot-name">${s.name}</span>${ub?'<span class="badge b-booked" style="margin-left:6px">✓ จองแล้ว</span>':''}</div>
         <div class="badges">${full&&!ub?'<span class="badge b-full">เต็ม</span>':''}<span class="badge ${typeCls(s.type)}">${typeLabel(s.type)}</span></div>
@@ -493,7 +505,7 @@ function renderSlots(){
         <div class="meta">🕐 ${s.start}–${s.end}</div>
         <div class="meta">📍 ${s.location||'-'}</div>
       </div>
-      ${ub?`<div style="margin-top:8px;font-size:12px;color:var(--text2);background:var(--bg2);padding:7px 10px;border-radius:var(--radius)">หากต้องการยกเลิก กรุณาติดต่อผู้ดูแลระบบ</div>`:''}
+      ${ub?`<div style="margin-top:8px;font-size:12px;color:var(--text2);background:var(--bg2);padding:7px 10px;border-radius:var(--radius)">📞 หากต้องการยกเลิก กรุณาติดต่อผู้ดูแลระบบ</div>`:''}
       <div class="cap-bar"><div class="cap-fill ${fc}" style="width:${pct}%"></div></div>
       <div class="cap-text">${b}/${s.cap} คน</div>
     </div>`;
@@ -642,10 +654,26 @@ async function confirmBooking(){
   const bk={id:'b'+Date.now(),firstName:currentUser.firstName,lastName:currentUser.lastName,branch:currentUser.branch,slotId:s.id,slotName:s.name,date:s.date,time:s.start+'–'+s.end,type:s.type,location:s.location||''};
   bookings.push(bk);save('bk_bookings',bookings);
   document.getElementById('confirm-modal').classList.remove('show');
-  pendingId=null;renderSlots();
-  toast('🎉 จองรอบสำเร็จ! '+s.name);
+  pendingId=null;
   btn.disabled=false;btn.textContent='ยืนยันจอง';
+  // แสดง success modal
+  document.getElementById('success-detail').innerHTML=
+    `<strong>${s.name}</strong><br>📅 ${fmtDate(s.date)}<br>🕐 ${s.start}–${s.end}<br>📍 ${s.location||'-'}`;
+  document.getElementById('success-modal').classList.add('show');
+  renderSlots();
   if(sheetsUrl) await apiPost({action:'book',...bk});
+}
+
+function doneBooking(){
+  document.getElementById('success-modal').classList.remove('show');
+  // พยายามปิด tab หรือ redirect ไปหน้าว่าง
+  try{ window.close(); }catch(e){}
+  // ถ้าปิดไม่ได้ (mobile browser) ให้แสดงข้อความ
+  setTimeout(()=>{
+    if(!document.hidden){
+      toast('จองสำเร็จแล้ว สามารถปิดหน้านี้ได้เลยครับ');
+    }
+  },300);
 }
 
 async function cancelBooking(id){
