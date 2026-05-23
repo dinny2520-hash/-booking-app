@@ -476,7 +476,7 @@ buildDD('dd-f-branch',[{value:'',label:'ทุกสาขา'},...BRANCHES.map(
 
 let slots = JSON.parse(localStorage.getItem('bk_slots') || '[]');
 let bookings = JSON.parse(localStorage.getItem('bk_bookings') || '[]');
-const HARDCODED_URL = 'https://script.google.com/macros/s/AKfycby0dvDycsenIGx2i1UkGuTCkqpXpcXj8DXERh1a-2W8g1xLCiSOTLU4k_I3YOMBf71y/exec';
+const HARDCODED_URL = 'https://script.google.com/macros/s/AKfycbyl8IDVGs8T5ARogFufvu7Y-AQj9mVn3KU8sK2Q6yXEg0quYNfK7Q7LrjWLHdkuwRHZ/exec';
 let sheetsUrl = HARDCODED_URL;
 localStorage.setItem('bk_url', sheetsUrl);
 let adminPin = localStorage.getItem('bk_pin') || '123456';
@@ -694,7 +694,6 @@ async function confirmBooking(){
   const s=slots.find(s=>s.id===pendingId);if(!s)return;
   const btn=document.getElementById('confirm-btn');
   btn.disabled=true;btn.textContent='กำลังตรวจสอบ...';
-  // ดึงข้อมูลล่าสุดจาก Sheets ก่อนเสมอ เพื่อป้องกันจองซ้ำจากเครื่องอื่น
   try{
     const fresh=await smartGet(sheetsUrl+'?type=bookings').catch(()=>null);
     if(fresh&&Array.isArray(fresh)){
@@ -702,7 +701,6 @@ async function confirmBooking(){
       save('bk_bookings',bookings);
     }
   }catch(e){}
-  // เช็คซ้ำด้วยข้อมูลล่าสุดจาก Sheets
   if(userHasAnyBooking()){
     document.getElementById('confirm-modal').classList.remove('show');
     btn.disabled=false;btn.textContent='ยืนยันจอง';
@@ -710,14 +708,12 @@ async function confirmBooking(){
     toast('รหัสพนักงานนี้ได้จองไปแล้ว — 1 รหัสจองได้เพียง 1 รอบเท่านั้น',true);
     return;
   }
-  const btn=document.getElementById('confirm-btn');
-  btn.disabled=true;btn.textContent='กำลังจอง...';
+  btn.textContent='กำลังจอง...';
   const bk={id:'b'+Date.now(),empId:currentUser.empId,firstName:currentUser.firstName,lastName:currentUser.lastName,branch:currentUser.branch,slotId:s.id,slotName:s.name,date:s.date,time:s.start+'–'+s.end,type:s.type,location:s.location||''};
   bookings.push(bk);save('bk_bookings',bookings);
   document.getElementById('confirm-modal').classList.remove('show');
   pendingId=null;
   btn.disabled=false;btn.textContent='ยืนยันจอง';
-  // แสดง success modal
   document.getElementById('success-detail').innerHTML=
     `<strong>${s.name}</strong><br>📅 ${fmtDate(s.date)}<br>🕐 ${s.start}–${s.end}<br>📍 ${s.location||'-'}`;
   document.getElementById('success-modal').classList.add('show');
