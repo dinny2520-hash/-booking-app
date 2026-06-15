@@ -678,8 +678,7 @@ function verifyPin(){
     adminOn=true;
     document.getElementById('admin-lock').style.display='none';
     document.getElementById('admin-content').style.display='block';
-    if(sheetsUrl)document.getElementById('sheets-url').value=sheetsUrl;
-    renderAdminSlots();
+    renderAdminSlots();fillSlotFilter();renderBookings();
     document.getElementById('pin-err').textContent='';
   } else {
     document.getElementById('pin-err').textContent='รหัสไม่ถูกต้อง';
