@@ -188,6 +188,9 @@
       </div>
       <button class="btn btn-sm" onclick="clearUser()">เปลี่ยน</button>
     </div>
+    <div id="slots-header" style="display:none;margin-bottom:10px">
+      <div style="font-size:17px;font-weight:700;color:#E24B4A;text-align:center;padding:10px 14px;background:#FCEBEB;border-radius:var(--radius);border:1.5px solid #F7C1C1">📋 กรุณาเลือกรอบที่ต้องการเข้าร่วมกิจกรรม</div>
+    </div>
     <div id="slots-container"></div>
   </div>
 
@@ -649,6 +652,7 @@ function showConfirmed(){
   document.getElementById('u-empid').textContent='รหัส '+currentUser.empId;
   document.getElementById('emp-confirmed').style.display='flex';
   document.getElementById('emp-form-area').style.display='none';
+  document.getElementById('slots-header').style.display='block';
 }
 function clearUser(){
   currentUser=null;localStorage.removeItem('bk_user');
@@ -657,6 +661,7 @@ function clearUser(){
   document.getElementById('emp-id').value='';
   document.getElementById('emp-first').value='';
   document.getElementById('emp-last').value='';
+  document.getElementById('slots-header').style.display='none';
   pickDD('dd-emp-branch','','-- เลือกสาขา --');
   renderSlots();
 }
