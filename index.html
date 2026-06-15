@@ -108,6 +108,8 @@
   /* admin slots */
   .arow{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:0.5px solid var(--border)}
   .arow:last-child{border-bottom:none}
+  .bch-tag{padding:6px 12px;border-radius:20px;font-size:13px;border:0.5px solid var(--border2);cursor:pointer;user-select:none;background:var(--bg);color:var(--text2);transition:all .15s;-webkit-tap-highlight-color:transparent;touch-action:manipulation}
+  .bch-tag.on{background:var(--text);color:var(--bg);border-color:transparent}
   /* config */
   .config{background:var(--bg2);border-radius:var(--radius);padding:1rem;margin-bottom:1rem}
   .config-title{font-size:11px;font-weight:600;color:var(--text2);letter-spacing:.06em;text-transform:uppercase;margin-bottom:8px}
@@ -211,14 +213,7 @@
         </div>
         <div class="tip">🔒 URL ถูกฝังในไฟล์แล้ว ทุกเครื่องเชื่อมชีตอัตโนมัติ</div>
       </div>
-      <div class="config">
-        <div class="config-title">🔑 เปลี่ยนรหัสผู้ดูแล</div>
-        <div style="display:flex;gap:8px;flex-wrap:wrap">
-          <input id="new-pin" type="password" placeholder="รหัสใหม่ 6 หลัก" maxlength="6" style="max-width:160px">
-          <input id="new-pin2" type="password" placeholder="ยืนยันรหัสใหม่" maxlength="6" style="max-width:160px">
-          <button class="btn btn-sm" onclick="changePin()">เปลี่ยนรหัส</button>
-        </div>
-      </div>
+      <div class="config" style="display:none">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem">
         <div class="section-title" style="margin:0">จัดการรอบกิจกรรม</div>
         <button class="btn btn-primary btn-sm" onclick="openAddSlot()">+ เพิ่มรอบ</button>
@@ -269,6 +264,12 @@
       <div><label>รับสูงสุด (คน) *</label><input id="f-cap" type="number" min="1" value="10"></div>
     </div>
     <div class="form-row form-1"><div><label>สถานที่ / ห้อง</label><input id="f-location" type="text" placeholder="เช่น ห้องประชุม A"></div></div>
+    <div class="form-row form-1">
+      <div>
+        <label>สาขาที่เปิดให้จอง <span style="color:var(--text3);font-weight:400">(ไม่เลือก = เปิดทุกสาขา)</span></label>
+        <div id="branch-checkboxes" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px"></div>
+      </div>
+    </div>
     <div class="modal-actions">
       <button class="btn btn-sm" onclick="closeModal()">ยกเลิก</button>
       <button class="btn btn-primary btn-sm" onclick="saveSlot()">บันทึกรอบ</button>
@@ -440,7 +441,7 @@ function out(obj, cb){
 <div id="toast" class="toast"></div>
 
 <script>
-const BRANCHES=['ปลวกแดง','ซีเค','โรงงานปลวกแดง','ระยอง','บ้านค่าย','นิคมพัฒนา','มาบตาพุด','โรงงานระยอง'];
+const BRANCHES=['ปลวกแดง','ซีเค','โรงงานปลวกแดง','ระยอง','บ้านค่าย','นิคมพัฒนา','มาบตาพุด','โรงงานระยอง','นิคมสะพานสี่'];
 let ddVals={'dd-emp-branch':'','dd-f-branch':'','dd-f-slot':''};
 
 function buildDD(id,opts,onChange){
@@ -471,12 +472,34 @@ document.addEventListener('click',e=>{
     document.querySelectorAll('.dd-list.open').forEach(l=>l.classList.remove('open'));
 },{passive:true});
 
+function buildBranchCheckboxes(selected){
+  const c=document.getElementById('branch-checkboxes');
+  if(!c)return;
+  c.innerHTML='';
+  BRANCHES.forEach(b=>{
+    const tag=document.createElement('div');
+    tag.className='bch-tag'+(selected&&selected.includes(b)?' on':'');
+    tag.textContent=b;
+    tag.onclick=()=>tag.classList.toggle('on');
+    c.appendChild(tag);
+  });
+}
+function getSelectedBranches(){
+  const tags=document.querySelectorAll('#branch-checkboxes .bch-tag.on');
+  return Array.from(tags).map(t=>t.textContent);
+}
+function isSlotAvailableForUser(s){
+  if(!s.branches||s.branches.length===0) return true;
+  if(!currentUser) return true;
+  return s.branches.includes(currentUser.branch);
+}
+
 buildDD('dd-emp-branch',[{value:'',label:'-- เลือกสาขา --'},...BRANCHES.map(b=>({value:b,label:b}))],null);
 buildDD('dd-f-branch',[{value:'',label:'ทุกสาขา'},...BRANCHES.map(b=>({value:b,label:b}))],()=>renderBookings());
 
 let slots = JSON.parse(localStorage.getItem('bk_slots') || '[]');
 let bookings = JSON.parse(localStorage.getItem('bk_bookings') || '[]');
-const HARDCODED_URL = 'https://script.google.com/macros/s/AKfycbyl8IDVGs8T5ARogFufvu7Y-AQj9mVn3KU8sK2Q6yXEg0quYNfK7Q7LrjWLHdkuwRHZ/exec';
+const HARDCODED_URL = 'https://script.google.com/macros/s/AKfycbwsz6pL4Yq8Pw3b3XymoAiW7IGGok1371nY7F9ZWJ6KIGq3LVOcBVzvDBGVDxCPs8nZ/exec';
 let sheetsUrl = HARDCODED_URL;
 localStorage.setItem('bk_url', sheetsUrl);
 let adminPin = '720619';
@@ -524,10 +547,14 @@ function renderSlots(){
   const alreadyBooked = userHasAnyBooking();
   c.innerHTML=slots.map(s=>{
     const b=booked(s.id),pct=s.cap>0?Math.round(b/s.cap*100):0,full=b>=s.cap,ub=userBooked(s.id);
+    const available=isSlotAvailableForUser(s);
     const fc=pct>=100?'full':pct>=70?'mid':'ok';
-    const clickable = !full && !ub && !alreadyBooked;
-    const lockedByOther = !ub && alreadyBooked;
-    return `<div class="card${clickable?' slot-card':''}" ${clickable?`onclick="openConfirm('${s.id}')"`:''} style="${full&&!ub&&!alreadyBooked?'opacity:.6;cursor:not-allowed':!clickable&&!ub?'opacity:.5;cursor:not-allowed':ub?'cursor:default':''}">
+    const clickable = !full && !ub && !alreadyBooked && available;
+    const branchTag = s.branches&&s.branches.length>0
+      ? `<div style="margin-top:6px;display:flex;gap:4px;flex-wrap:wrap">${s.branches.map(br=>`<span style="font-size:11px;padding:2px 7px;border-radius:8px;background:var(--bbg);color:var(--btxt)">${br}</span>`).join('')}</div>`
+      : `<div style="margin-top:6px;font-size:11px;color:var(--text3)">เปิดทุกสาขา</div>`;
+    const lockedBranch = !available && !ub;
+    return `<div class="card${clickable?' slot-card':''}" ${clickable?`onclick="openConfirm('${s.id}')"`:''} style="${full&&!ub?'opacity:.6;cursor:not-allowed':lockedBranch?'opacity:.5;cursor:not-allowed':ub?'cursor:default':''}">
       <div class="slot-header">
         <div><span class="slot-name">${s.name}</span>${ub?'<span class="badge b-booked" style="margin-left:6px">✓ จองแล้ว</span>':''}</div>
         <div class="badges">${full&&!ub?'<span class="badge b-full">เต็ม</span>':''}<span class="badge ${typeCls(s.type)}">${typeLabel(s.type)}</span></div>
@@ -537,7 +564,9 @@ function renderSlots(){
         <div class="meta">🕐 ${s.start}–${s.end}</div>
         <div class="meta">📍 ${s.location||'-'}</div>
       </div>
+      ${branchTag}
       ${ub?`<div style="margin-top:8px;font-size:12px;color:var(--text2);background:var(--bg2);padding:7px 10px;border-radius:var(--radius)">📞 หากต้องการยกเลิก กรุณาติดต่อผู้ดูแลระบบ</div>`:''}
+      ${lockedBranch?`<div style="margin-top:8px;font-size:12px;color:var(--red);background:var(--rbg);padding:7px 10px;border-radius:var(--radius)">🔒 รอบนี้ไม่เปิดสำหรับสาขาของคุณ</div>`:''}
       <div class="cap-bar"><div class="cap-fill ${fc}" style="width:${pct}%"></div></div>
       <div class="cap-text">${b}/${s.cap} คน</div>
     </div>`;
@@ -760,6 +789,7 @@ function openAddSlot(){
   editId=null;document.getElementById('modal-title').textContent='เพิ่มรอบกิจกรรม';
   ['f-name','f-date','f-start','f-end','f-location'].forEach(i=>document.getElementById(i).value='');
   document.getElementById('f-cap').value='10';document.getElementById('f-type').value='exam';
+  buildBranchCheckboxes([]);
   document.getElementById('slot-modal').classList.add('show');
 }
 function editSlot(id){
@@ -769,6 +799,7 @@ function editSlot(id){
   document.getElementById('f-start').value=s.start;document.getElementById('f-end').value=s.end;
   document.getElementById('f-cap').value=s.cap;document.getElementById('f-type').value=s.type;
   document.getElementById('f-location').value=s.location||'';
+  buildBranchCheckboxes(s.branches||[]);
   document.getElementById('slot-modal').classList.add('show');
 }
 function closeModal(){document.getElementById('slot-modal').classList.remove('show');}
@@ -777,15 +808,16 @@ async function saveSlot(){
   const start=document.getElementById('f-start').value,end=document.getElementById('f-end').value;
   const cap=parseInt(document.getElementById('f-cap').value),type=document.getElementById('f-type').value;
   const location=document.getElementById('f-location').value.trim();
+  const branches=getSelectedBranches();
   if(!name||!date||!start||!end||!cap){toast('กรุณากรอกข้อมูลให้ครบ',true);return;}
   if(editId){
-    const s=slots.find(s=>s.id===editId);Object.assign(s,{name,date,start,end,cap,type,location});
+    const s=slots.find(s=>s.id===editId);Object.assign(s,{name,date,start,end,cap,type,location,branches});
     if(sheetsUrl) await apiPost({action:'updateSlot',...s});
   } else {
-    const ns={id:'s'+Date.now(),name,date,start,end,type,cap,location};slots.push(ns);
+    const ns={id:'s'+Date.now(),name,date,start,end,type,cap,location,branches};slots.push(ns);
     if(sheetsUrl) await apiPost({action:'saveSlot',...ns});
   }
-  save('bk_slots',slots);closeModal();renderAdminSlots();
+  save('bk_slots',slots);closeModal();renderAdminSlots();renderSlots();
   toast(editId?'แก้ไขรอบแล้ว':'เพิ่มรอบใหม่แล้ว');
 }
 async function delSlot(id){
