@@ -501,7 +501,7 @@ buildDD('dd-f-branch',[{value:'',label:'ทุกสาขา'},...BRANCHES.map(
 
 let slots = JSON.parse(localStorage.getItem('bk_slots') || '[]');
 let bookings = JSON.parse(localStorage.getItem('bk_bookings') || '[]');
-const HARDCODED_URL = 'https://script.google.com/macros/s/AKfycbwsz6pL4Yq8Pw3b3XymoAiW7IGGok1371nY7F9ZWJ6KIGq3LVOcBVzvDBGVDxCPs8nZ/exec';
+const HARDCODED_URL = 'https://script.google.com/macros/s/AKfycbwHtF2F9WMocHKRkn9zKA8nE5z_lqZLabQOOD8Ll-Js3X8MqEMJgJgGcITvzvK46cYT/exec';
 let sheetsUrl = HARDCODED_URL;
 localStorage.setItem('bk_url', sheetsUrl);
 let adminPin = '720619';
@@ -723,9 +723,13 @@ function openConfirm(id){
   document.getElementById('confirm-modal').classList.add('show');
 }
 
+let isBooking = false; // ป้องกันกดซ้ำ
+
 async function confirmBooking(){
+  if(isBooking) return; // ถ้ากำลังจองอยู่ ไม่ให้กดซ้ำ
   const s=slots.find(s=>s.id===pendingId);if(!s)return;
   const btn=document.getElementById('confirm-btn');
+  isBooking=true;
   btn.disabled=true;btn.textContent='กำลังตรวจสอบ...';
   try{
     const fresh=await smartGet(sheetsUrl+'?type=bookings').catch(()=>null);
@@ -737,6 +741,7 @@ async function confirmBooking(){
   if(userHasAnyBooking()){
     document.getElementById('confirm-modal').classList.remove('show');
     btn.disabled=false;btn.textContent='ยืนยันจอง';
+    isBooking=false;
     renderSlots();
     toast('รหัสพนักงานนี้ได้จองไปแล้ว — 1 รหัสจองได้เพียง 1 รอบเท่านั้น',true);
     return;
@@ -747,6 +752,7 @@ async function confirmBooking(){
   document.getElementById('confirm-modal').classList.remove('show');
   pendingId=null;
   btn.disabled=false;btn.textContent='ยืนยันจอง';
+  isBooking=false;
   document.getElementById('success-detail').innerHTML=
     `<strong>${s.name}</strong><br>📅 ${fmtDate(s.date)}<br>🕐 ${s.start}–${s.end}<br>📍 ${s.location||'-'}`;
   document.getElementById('success-modal').classList.add('show');
