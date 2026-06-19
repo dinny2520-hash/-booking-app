@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>ระบบจองรอบกิจกรรม</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
   *{box-sizing:border-box;margin:0;padding:0}
   :root{
@@ -158,22 +159,19 @@
     <div id="emp-form-area" class="card" style="margin-bottom:12px">
       <div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:12px">ข้อมูลของคุณ</div>
       <div class="form-row form-1" style="margin-bottom:10px">
-        <div><label>รหัสพนักงาน *</label><input id="emp-id" type="text" inputmode="numeric" placeholder="กรอกรหัสพนักงาน เช่น 001, 0023" autocomplete="off"></div>
+        <div><label>รหัสพนักงาน *</label><input id="emp-id" type="text" inputmode="numeric" placeholder="กรอกรหัสพนักงาน เช่น 001, 0023" autocomplete="off" oninput="lookupEmployee()"></div>
       </div>
-      <div class="form-row" style="margin-bottom:10px">
-        <div><label>ชื่อจริง *</label><input id="emp-first" type="text" placeholder="ชื่อจริงภาษาไทยเท่านั้น" autocomplete="off" autocorrect="off" spellcheck="false"></div>
-        <div><label>นามสกุล *</label><input id="emp-last" type="text" placeholder="นามสกุล" autocomplete="off" autocorrect="off" spellcheck="false"></div>
-      </div>
-      <div class="form-row form-1" style="margin-bottom:10px">
-        <div>
-          <label>สาขา *</label>
-          <div class="dd-wrap" id="dd-emp-branch">
-            <button type="button" class="dd-btn dd-ph" id="dd-emp-branch-btn" onclick="toggleDD('dd-emp-branch')">
-              <span id="dd-emp-branch-label">-- เลือกสาขา --</span><span style="font-size:10px;color:var(--text3)">▼</span>
-            </button>
-            <div class="dd-list" id="dd-emp-branch-list"></div>
+      <div id="emp-lookup-result" style="display:none;margin-bottom:10px;padding:10px 12px;background:var(--bg2);border-radius:var(--radius);font-size:14px">
+        <div style="display:flex;align-items:center;gap:8px">
+          <div class="avatar" id="lookup-av" style="width:30px;height:30px;font-size:12px">?</div>
+          <div>
+            <div style="font-weight:600" id="lookup-name"></div>
+            <div style="font-size:12px;color:var(--text2)" id="lookup-branch"></div>
           </div>
         </div>
+      </div>
+      <div id="emp-notfound" style="display:none;margin-bottom:10px;padding:10px 12px;background:var(--rbg);border-radius:var(--radius);font-size:13px;color:var(--red)">
+        ❌ ไม่พบรหัสพนักงานนี้ในระบบ กรุณาตรวจสอบรหัสอีกครั้ง หรือติดต่อผู้ดูแล
       </div>
       <button class="btn btn-primary" onclick="setUser()" style="width:100%">✓ ยืนยันข้อมูล</button>
     </div>
@@ -243,6 +241,41 @@
           </div>
         </div>
         <div id="bookings-list"></div>
+      </div>
+
+      <div style="margin-top:1.5rem;padding-top:1.25rem;border-top:0.5px solid var(--border)">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem">
+          <div class="section-title" style="margin:0">👥 จัดการรายชื่อพนักงาน</div>
+          <span style="font-size:12px;color:var(--text2)" id="emp-count">0 คน</span>
+        </div>
+        <div class="config">
+          <div class="config-title">📥 นำเข้าจากไฟล์ Excel (.xlsx)</div>
+          <div style="font-size:12px;color:var(--text2);margin-bottom:8px;line-height:1.6">คอลัมน์ต้องเป็น: <strong>รหัสพนักงาน, ชื่อจริง, นามสกุล, สาขา</strong> ตามลำดับ (แถวแรกเป็นหัวตาราง)</div>
+          <input type="file" id="excel-file" accept=".xlsx,.xls" style="display:none" onchange="handleExcelUpload(event)">
+          <button class="btn btn-sm" style="width:100%" onclick="document.getElementById('excel-file').click()">📂 เลือกไฟล์ Excel</button>
+          <div id="excel-status" style="font-size:12px;margin-top:8px"></div>
+        </div>
+        <div class="config">
+          <div class="config-title">➕ เพิ่มพนักงานทีละคน</div>
+          <div class="form-row" style="margin-bottom:8px">
+            <input id="ne-id" type="text" inputmode="numeric" placeholder="รหัสพนักงาน">
+            <input id="ne-fn" type="text" placeholder="ชื่อจริง" autocomplete="off">
+          </div>
+          <div class="form-row" style="margin-bottom:8px">
+            <input id="ne-ln" type="text" placeholder="นามสกุล" autocomplete="off">
+            <div class="dd-wrap" id="dd-ne-branch">
+              <button type="button" class="dd-btn dd-ph" id="dd-ne-branch-btn" onclick="toggleDD('dd-ne-branch')">
+                <span id="dd-ne-branch-label">-- เลือกสาขา --</span><span style="font-size:10px;color:var(--text3)">▼</span>
+              </button>
+              <div class="dd-list" id="dd-ne-branch-list"></div>
+            </div>
+          </div>
+          <button class="btn btn-primary btn-sm" style="width:100%" onclick="addEmployee()">เพิ่มพนักงาน</button>
+        </div>
+        <div style="display:flex;gap:8px;margin-bottom:10px">
+          <input id="emp-search" type="text" placeholder="🔍 ค้นหาชื่อหรือรหัส..." oninput="renderEmployeeList()" style="flex:1">
+        </div>
+        <div id="employee-list"></div>
       </div>
     </div>
   </div>
@@ -501,7 +534,8 @@ buildDD('dd-f-branch',[{value:'',label:'ทุกสาขา'},...BRANCHES.map(
 
 let slots = JSON.parse(localStorage.getItem('bk_slots') || '[]');
 let bookings = JSON.parse(localStorage.getItem('bk_bookings') || '[]');
-const HARDCODED_URL = 'https://script.google.com/macros/s/AKfycbwHtF2F9WMocHKRkn9zKA8nE5z_lqZLabQOOD8Ll-Js3X8MqEMJgJgGcITvzvK46cYT/exec';
+let employees = JSON.parse(localStorage.getItem('bk_employees') || '[]');
+const HARDCODED_URL = 'https://script.google.com/macros/s/AKfycbzCAyd1nIq8tYO6KCFW0ecN3ypfVD-wnhCN8e7IbgTHUwduQgeL7s-jDD8fArJepZ2X/exec';
 let sheetsUrl = HARDCODED_URL;
 localStorage.setItem('bk_url', sheetsUrl);
 let adminPin = '720619';
@@ -540,7 +574,7 @@ function switchTab(t,el){
   el.classList.add('active');
   document.getElementById('panel-'+t).classList.add('active');
   if(t==='employee') renderSlots();
-  if(t==='admin'&&adminOn){ renderAdminSlots(); fillSlotFilter(); renderBookings(); }
+  if(t==='admin'&&adminOn){ renderAdminSlots(); fillSlotFilter(); renderBookings(); renderEmployeeList(); }
 }
 
 function renderSlots(){
@@ -632,15 +666,35 @@ function renderBookings(){
     </div>`).join('');
 }
 
+function findEmployee(empId){
+  return employees.find(e=>String(e.empId)===String(empId));
+}
+
+function lookupEmployee(){
+  const empId=document.getElementById('emp-id').value.trim();
+  const result=document.getElementById('emp-lookup-result');
+  const notfound=document.getElementById('emp-notfound');
+  if(!empId){result.style.display='none';notfound.style.display='none';return;}
+  const emp=findEmployee(empId);
+  if(emp){
+    document.getElementById('lookup-av').textContent=emp.firstName[0];
+    document.getElementById('lookup-name').textContent=emp.firstName+' '+emp.lastName;
+    document.getElementById('lookup-branch').textContent='สาขา'+emp.branch;
+    result.style.display='block';
+    notfound.style.display='none';
+  } else {
+    result.style.display='none';
+    notfound.style.display='block';
+  }
+}
+
 function setUser(){
   const empId=document.getElementById('emp-id').value.trim();
-  const fn=document.getElementById('emp-first').value.trim();
-  const ln=document.getElementById('emp-last').value.trim();
-  const br=ddVals['dd-emp-branch'];
-  if(!empId||!fn||!ln||!br){toast('กรุณากรอกข้อมูลให้ครบทุกช่อง',true);return;}
+  if(!empId){toast('กรุณากรอกรหัสพนักงาน',true);return;}
   if(!/^\d+$/.test(empId)){toast('รหัสพนักงานต้องเป็นตัวเลขเท่านั้น',true);return;}
-  if(/[a-zA-Z]/.test(fn)||/[a-zA-Z]/.test(ln)){toast('กรุณากรอกชื่อภาษาไทยเท่านั้น',true);return;}
-  currentUser={empId,firstName:fn,lastName:ln,branch:br};
+  const emp=findEmployee(empId);
+  if(!emp){toast('ไม่พบรหัสพนักงานนี้ในระบบ กรุณาตรวจสอบใหม่',true);return;}
+  currentUser={empId:emp.empId,firstName:emp.firstName,lastName:emp.lastName,branch:emp.branch};
   save('bk_user',currentUser);
   showConfirmed(); renderSlots();
 }
@@ -659,10 +713,9 @@ function clearUser(){
   document.getElementById('emp-confirmed').style.display='none';
   document.getElementById('emp-form-area').style.display='block';
   document.getElementById('emp-id').value='';
-  document.getElementById('emp-first').value='';
-  document.getElementById('emp-last').value='';
+  document.getElementById('emp-lookup-result').style.display='none';
+  document.getElementById('emp-notfound').style.display='none';
   document.getElementById('slots-header').style.display='none';
-  pickDD('dd-emp-branch','','-- เลือกสาขา --');
   renderSlots();
 }
 
@@ -682,7 +735,7 @@ function verifyPin(){
     adminOn=true;
     document.getElementById('admin-lock').style.display='none';
     document.getElementById('admin-content').style.display='block';
-    renderAdminSlots();fillSlotFilter();renderBookings();
+    renderAdminSlots();fillSlotFilter();renderBookings();renderEmployeeList();
     document.getElementById('pin-err').textContent='';
   } else {
     document.getElementById('pin-err').textContent='รหัสไม่ถูกต้อง';
@@ -841,6 +894,99 @@ function saveConfig(){
   toast('URL ถูกฝังในไฟล์แล้ว ไม่จำเป็นต้องตั้งค่า');
 }
 
+/* ---- EMPLOYEE MANAGEMENT ---- */
+buildDD('dd-ne-branch',[{value:'',label:'-- เลือกสาขา --'},...BRANCHES.map(b=>({value:b,label:b}))],null);
+
+function renderEmployeeList(){
+  const q=(document.getElementById('emp-search')?.value||'').trim().toLowerCase();
+  const c=document.getElementById('employee-list');
+  if(!c)return;
+  document.getElementById('emp-count').textContent=employees.length+' คน';
+  let list=employees;
+  if(q) list=list.filter(e=>String(e.empId).includes(q)||(e.firstName+e.lastName).toLowerCase().includes(q));
+  if(!list.length){c.innerHTML='<div class="empty">ยังไม่มีรายชื่อพนักงานในระบบ</div>';return;}
+  c.innerHTML='<div class="card">'+list.map(e=>`<div class="arow">
+    <div>
+      <div style="font-size:14px;font-weight:600">${e.firstName} ${e.lastName}</div>
+      <div style="font-size:12px;color:var(--text2);margin-top:2px">รหัส ${e.empId} · ${e.branch}</div>
+    </div>
+    <button class="btn btn-danger btn-sm" onclick="deleteEmployee('${e.empId}')">ลบ</button>
+  </div>`).join('')+'</div>';
+}
+
+async function addEmployee(){
+  const id=document.getElementById('ne-id').value.trim();
+  const fn=document.getElementById('ne-fn').value.trim();
+  const ln=document.getElementById('ne-ln').value.trim();
+  const br=ddVals['dd-ne-branch'];
+  if(!id||!fn||!ln||!br){toast('กรุณากรอกข้อมูลให้ครบ',true);return;}
+  if(!/^\d+$/.test(id)){toast('รหัสพนักงานต้องเป็นตัวเลขเท่านั้น',true);return;}
+  if(findEmployee(id)){toast('รหัสพนักงานนี้มีอยู่ในระบบแล้ว',true);return;}
+  const emp={empId:id,firstName:fn,lastName:ln,branch:br};
+  employees.push(emp);
+  save('bk_employees',employees);
+  document.getElementById('ne-id').value='';
+  document.getElementById('ne-fn').value='';
+  document.getElementById('ne-ln').value='';
+  pickDD('dd-ne-branch','','-- เลือกสาขา --');
+  renderEmployeeList();
+  toast('เพิ่มพนักงานแล้ว');
+  if(sheetsUrl) await apiPost({action:'addEmployee',...emp});
+}
+
+async function deleteEmployee(empId){
+  if(!confirm('ต้องการลบพนักงานรหัส '+empId+' ออกจากระบบ?'))return;
+  employees=employees.filter(e=>String(e.empId)!==String(empId));
+  save('bk_employees',employees);
+  renderEmployeeList();
+  toast('ลบพนักงานแล้ว');
+  if(sheetsUrl) await apiPost({action:'deleteEmployee',empId});
+}
+
+function handleExcelUpload(evt){
+  const file=evt.target.files[0];
+  if(!file)return;
+  const status=document.getElementById('excel-status');
+  status.textContent='กำลังอ่านไฟล์...';status.style.color='var(--text2)';
+  const reader=new FileReader();
+  reader.onload=async function(e){
+    try{
+      const data=new Uint8Array(e.target.result);
+      const wb=XLSX.read(data,{type:'array'});
+      const ws=wb.Sheets[wb.SheetNames[0]];
+      const rows=XLSX.utils.sheet_to_json(ws,{header:1});
+      let added=0,skipped=0,invalid=0;
+      const newEmps=[];
+      for(let i=1;i<rows.length;i++){
+        const r=rows[i];
+        if(!r||r.length<4)continue;
+        const id=String(r[0]||'').trim();
+        const fn=String(r[1]||'').trim();
+        const ln=String(r[2]||'').trim();
+        const br=String(r[3]||'').trim();
+        if(!id||!fn||!ln||!br){invalid++;continue;}
+        if(findEmployee(id)||newEmps.some(x=>x.empId===id)){skipped++;continue;}
+        newEmps.push({empId:id,firstName:fn,lastName:ln,branch:br});
+        added++;
+      }
+      employees=employees.concat(newEmps);
+      save('bk_employees',employees);
+      renderEmployeeList();
+      status.innerHTML=`✅ นำเข้าสำเร็จ ${added} คน${skipped?` (ข้ามรหัสซ้ำ ${skipped} คน)`:''}${invalid?` (ข้อมูลไม่ครบ ${invalid} แถว)`:''}`;
+      status.style.color='#3B6D11';
+      toast(`นำเข้าพนักงานสำเร็จ ${added} คน`);
+      if(sheetsUrl&&newEmps.length){
+        for(const emp of newEmps){ await apiPost({action:'addEmployee',...emp}); }
+      }
+    }catch(err){
+      status.textContent='❌ อ่านไฟล์ไม่สำเร็จ กรุณาตรวจสอบรูปแบบไฟล์';
+      status.style.color='var(--red)';
+    }
+    evt.target.value='';
+  };
+  reader.readAsArrayBuffer(file);
+}
+
 function jsonpGet(url){
   return new Promise((res,rej)=>{
     const cb='cb'+Date.now()+'_'+Math.floor(Math.random()*1e5);
@@ -861,12 +1007,12 @@ async function fetchSheets(){
   if(!sheetsUrl)return;
   setSyncUI('spin');
   try{
-    const[sr,br]=await Promise.all([
+    const[sr,br,er]=await Promise.all([
       smartGet(sheetsUrl+'?type=slots').catch(()=>null),
-      smartGet(sheetsUrl+'?type=bookings').catch(()=>null)
+      smartGet(sheetsUrl+'?type=bookings').catch(()=>null),
+      smartGet(sheetsUrl+'?type=employees').catch(()=>null)
     ]);
     if(sr&&Array.isArray(sr)&&sr.length){
-      // sanitize time fields ที่อาจเป็น Date object จาก Sheets
       slots=sr.map(s=>({...s,
         start:cleanTime(s.start),
         end:cleanTime(s.end),
@@ -878,8 +1024,12 @@ async function fetchSheets(){
       bookings=br.map(b=>({...b,date:cleanDate(b.date)}));
       save('bk_bookings',bookings);
     }
+    if(er&&Array.isArray(er)){
+      employees=er;
+      save('bk_employees',employees);
+    }
     setSyncUI('ok');renderSlots();
-    if(adminOn){ renderAdminSlots(); fillSlotFilter(); renderBookings(); }
+    if(adminOn){ renderAdminSlots(); fillSlotFilter(); renderBookings(); renderEmployeeList(); }
   }catch(e){setSyncUI('err');}
 }
 
