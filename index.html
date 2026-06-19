@@ -166,6 +166,7 @@
           <div class="avatar" id="lookup-av" style="width:30px;height:30px;font-size:12px">?</div>
           <div>
             <div style="font-weight:600" id="lookup-name"></div>
+            <div style="font-size:12px;color:var(--text2)" id="lookup-dept-pos"></div>
             <div style="font-size:12px;color:var(--text2)" id="lookup-branch"></div>
           </div>
         </div>
@@ -179,6 +180,7 @@
       <div class="avatar" id="av">?</div>
       <div style="flex:1">
         <div style="font-weight:600;font-size:14px" id="u-name"></div>
+        <div style="font-size:12px;color:var(--text2);margin-top:2px" id="u-dept-pos"></div>
         <div style="margin-top:3px;display:flex;gap:6px;flex-wrap:wrap">
           <span class="badge b-branch" id="u-branch"></span>
           <span class="badge" style="background:var(--bg2);color:var(--text2)" id="u-empid"></span>
@@ -250,7 +252,7 @@
         </div>
         <div class="config">
           <div class="config-title">📥 นำเข้าจากไฟล์ Excel (.xlsx)</div>
-          <div style="font-size:12px;color:var(--text2);margin-bottom:8px;line-height:1.6">คอลัมน์ต้องเป็น: <strong>รหัสพนักงาน, ชื่อจริง, นามสกุล, สาขา</strong> ตามลำดับ (แถวแรกเป็นหัวตาราง)</div>
+          <div style="font-size:12px;color:var(--text2);margin-bottom:8px;line-height:1.6">คอลัมน์ต้องเป็น: <strong>รหัสพนักงาน, ชื่อจริง, นามสกุล, แผนก, ตำแหน่ง, สาขา</strong> ตามลำดับ (แถวแรกเป็นหัวตาราง)</div>
           <input type="file" id="excel-file" accept=".xlsx,.xls" style="display:none" onchange="handleExcelUpload(event)">
           <button class="btn btn-sm" style="width:100%" onclick="document.getElementById('excel-file').click()">📂 เลือกไฟล์ Excel</button>
           <div id="excel-status" style="font-size:12px;margin-top:8px"></div>
@@ -263,6 +265,10 @@
           </div>
           <div class="form-row" style="margin-bottom:8px">
             <input id="ne-ln" type="text" placeholder="นามสกุล" autocomplete="off">
+            <input id="ne-dept" type="text" placeholder="แผนก" autocomplete="off">
+          </div>
+          <div class="form-row" style="margin-bottom:8px">
+            <input id="ne-pos" type="text" placeholder="ตำแหน่ง" autocomplete="off">
             <div class="dd-wrap" id="dd-ne-branch">
               <button type="button" class="dd-btn dd-ph" id="dd-ne-branch-btn" onclick="toggleDD('dd-ne-branch')">
                 <span id="dd-ne-branch-label">-- เลือกสาขา --</span><span style="font-size:10px;color:var(--text3)">▼</span>
@@ -535,7 +541,7 @@ buildDD('dd-f-branch',[{value:'',label:'ทุกสาขา'},...BRANCHES.map(
 let slots = JSON.parse(localStorage.getItem('bk_slots') || '[]');
 let bookings = JSON.parse(localStorage.getItem('bk_bookings') || '[]');
 let employees = JSON.parse(localStorage.getItem('bk_employees') || '[]');
-const HARDCODED_URL = 'https://script.google.com/macros/s/AKfycbzCAyd1nIq8tYO6KCFW0ecN3ypfVD-wnhCN8e7IbgTHUwduQgeL7s-jDD8fArJepZ2X/exec';
+const HARDCODED_URL = 'https://script.google.com/macros/s/AKfycbyuCvnybBhRE9tygLc6raDtqc3H7xaibKDWpRWggMzclkTf0eRFfCnf35AncMh0huJC/exec';
 let sheetsUrl = HARDCODED_URL;
 localStorage.setItem('bk_url', sheetsUrl);
 let adminPin = '720619';
@@ -679,6 +685,7 @@ function lookupEmployee(){
   if(emp){
     document.getElementById('lookup-av').textContent=emp.firstName[0];
     document.getElementById('lookup-name').textContent=emp.firstName+' '+emp.lastName;
+    document.getElementById('lookup-dept-pos').textContent=[emp.dept,emp.position].filter(Boolean).join(' · ');
     document.getElementById('lookup-branch').textContent='สาขา'+emp.branch;
     result.style.display='block';
     notfound.style.display='none';
@@ -694,7 +701,7 @@ function setUser(){
   if(!/^\d+$/.test(empId)){toast('รหัสพนักงานต้องเป็นตัวเลขเท่านั้น',true);return;}
   const emp=findEmployee(empId);
   if(!emp){toast('ไม่พบรหัสพนักงานนี้ในระบบ กรุณาตรวจสอบใหม่',true);return;}
-  currentUser={empId:emp.empId,firstName:emp.firstName,lastName:emp.lastName,branch:emp.branch};
+  currentUser={empId:emp.empId,firstName:emp.firstName,lastName:emp.lastName,dept:emp.dept||'',position:emp.position||'',branch:emp.branch};
   save('bk_user',currentUser);
   showConfirmed(); renderSlots();
 }
@@ -702,6 +709,7 @@ function showConfirmed(){
   if(!currentUser)return;
   document.getElementById('u-name').textContent=currentUser.firstName+' '+currentUser.lastName;
   document.getElementById('av').textContent=currentUser.firstName[0];
+  document.getElementById('u-dept-pos').textContent=[currentUser.dept,currentUser.position].filter(Boolean).join(' · ');
   document.getElementById('u-branch').textContent=currentUser.branch;
   document.getElementById('u-empid').textContent='รหัส '+currentUser.empId;
   document.getElementById('emp-confirmed').style.display='flex';
@@ -908,7 +916,7 @@ function renderEmployeeList(){
   c.innerHTML='<div class="card">'+list.map(e=>`<div class="arow">
     <div>
       <div style="font-size:14px;font-weight:600">${e.firstName} ${e.lastName}</div>
-      <div style="font-size:12px;color:var(--text2);margin-top:2px">รหัส ${e.empId} · ${e.branch}</div>
+      <div style="font-size:12px;color:var(--text2);margin-top:2px">รหัส ${e.empId} · ${[e.dept,e.position].filter(Boolean).join(' · ')} · ${e.branch}</div>
     </div>
     <button class="btn btn-danger btn-sm" onclick="deleteEmployee('${e.empId}')">ลบ</button>
   </div>`).join('')+'</div>';
@@ -918,16 +926,20 @@ async function addEmployee(){
   const id=document.getElementById('ne-id').value.trim();
   const fn=document.getElementById('ne-fn').value.trim();
   const ln=document.getElementById('ne-ln').value.trim();
+  const dept=document.getElementById('ne-dept').value.trim();
+  const pos=document.getElementById('ne-pos').value.trim();
   const br=ddVals['dd-ne-branch'];
-  if(!id||!fn||!ln||!br){toast('กรุณากรอกข้อมูลให้ครบ',true);return;}
+  if(!id||!fn||!ln||!br){toast('กรุณากรอกรหัส ชื่อ นามสกุล และสาขาให้ครบ',true);return;}
   if(!/^\d+$/.test(id)){toast('รหัสพนักงานต้องเป็นตัวเลขเท่านั้น',true);return;}
   if(findEmployee(id)){toast('รหัสพนักงานนี้มีอยู่ในระบบแล้ว',true);return;}
-  const emp={empId:id,firstName:fn,lastName:ln,branch:br};
+  const emp={empId:id,firstName:fn,lastName:ln,dept,position:pos,branch:br};
   employees.push(emp);
   save('bk_employees',employees);
   document.getElementById('ne-id').value='';
   document.getElementById('ne-fn').value='';
   document.getElementById('ne-ln').value='';
+  document.getElementById('ne-dept').value='';
+  document.getElementById('ne-pos').value='';
   pickDD('dd-ne-branch','','-- เลือกสาขา --');
   renderEmployeeList();
   toast('เพิ่มพนักงานแล้ว');
@@ -959,14 +971,16 @@ function handleExcelUpload(evt){
       const newEmps=[];
       for(let i=1;i<rows.length;i++){
         const r=rows[i];
-        if(!r||r.length<4)continue;
+        if(!r||r.length<6)continue;
         const id=String(r[0]||'').trim();
         const fn=String(r[1]||'').trim();
         const ln=String(r[2]||'').trim();
-        const br=String(r[3]||'').trim();
+        const dept=String(r[3]||'').trim();
+        const pos=String(r[4]||'').trim();
+        const br=String(r[5]||'').trim();
         if(!id||!fn||!ln||!br){invalid++;continue;}
         if(findEmployee(id)||newEmps.some(x=>x.empId===id)){skipped++;continue;}
-        newEmps.push({empId:id,firstName:fn,lastName:ln,branch:br});
+        newEmps.push({empId:id,firstName:fn,lastName:ln,dept,position:pos,branch:br});
         added++;
       }
       employees=employees.concat(newEmps);
