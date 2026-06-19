@@ -541,7 +541,7 @@ buildDD('dd-f-branch',[{value:'',label:'ทุกสาขา'},...BRANCHES.map(
 let slots = JSON.parse(localStorage.getItem('bk_slots') || '[]');
 let bookings = JSON.parse(localStorage.getItem('bk_bookings') || '[]');
 let employees = JSON.parse(localStorage.getItem('bk_employees') || '[]');
-const HARDCODED_URL = 'https://script.google.com/macros/s/AKfycbyuCvnybBhRE9tygLc6raDtqc3H7xaibKDWpRWggMzclkTf0eRFfCnf35AncMh0huJC/exec';
+const HARDCODED_URL = 'https://script.google.com/macros/s/AKfycbwQWecaXPfBlcXhQQR0UDEuH0eISFI3ewCrDm3YikaCTww3Dfn4popokAEByCSdAm11/exec';
 let sheetsUrl = HARDCODED_URL;
 localStorage.setItem('bk_url', sheetsUrl);
 let adminPin = '720619';
@@ -986,11 +986,23 @@ function handleExcelUpload(evt){
       employees=employees.concat(newEmps);
       save('bk_employees',employees);
       renderEmployeeList();
-      status.innerHTML=`✅ นำเข้าสำเร็จ ${added} คน${skipped?` (ข้ามรหัสซ้ำ ${skipped} คน)`:''}${invalid?` (ข้อมูลไม่ครบ ${invalid} แถว)`:''}`;
-      status.style.color='#3B6D11';
-      toast(`นำเข้าพนักงานสำเร็จ ${added} คน`);
+
       if(sheetsUrl&&newEmps.length){
-        for(const emp of newEmps){ await apiPost({action:'addEmployee',...emp}); }
+        status.textContent=`กำลังส่งข้อมูล ${newEmps.length} คนไปยัง Sheets...`;
+        status.style.color='var(--text2)';
+        const ok = await batchAddEmployees(newEmps);
+        if(ok){
+          status.innerHTML=`✅ นำเข้าสำเร็จ ${added} คน${skipped?` (ข้ามรหัสซ้ำ ${skipped} คน)`:''}${invalid?` (ข้อมูลไม่ครบ ${invalid} แถว)`:''}`;
+          status.style.color='#3B6D11';
+          toast(`นำเข้าพนักงานสำเร็จ ${added} คน`);
+        } else {
+          status.innerHTML=`⚠️ เพิ่มในแอปแล้ว ${added} คน แต่ส่งไป Sheets ไม่สำเร็จ — กดปุ่ม "ซิงค์" เพื่อลองใหม่ภายหลัง`;
+          status.style.color='var(--amber-text)';
+        }
+      } else {
+        status.innerHTML=`✅ นำเข้าสำเร็จ ${added} คน${skipped?` (ข้ามรหัสซ้ำ ${skipped} คน)`:''}${invalid?` (ข้อมูลไม่ครบ ${invalid} แถว)`:''}`;
+        status.style.color='#3B6D11';
+        toast(`นำเข้าพนักงานสำเร็จ ${added} คน`);
       }
     }catch(err){
       status.textContent='❌ อ่านไฟล์ไม่สำเร็จ กรุณาตรวจสอบรูปแบบไฟล์';
@@ -1073,6 +1085,31 @@ async function apiPost(data){
   if(!sheetsUrl)return;
   const url=sheetsUrl+'?action='+encodeURIComponent(data.action)+'&data='+encodeURIComponent(JSON.stringify(data));
   try{await smartGet(url);}catch(e){}
+}
+
+async function batchAddEmployees(empList){
+  if(!sheetsUrl)return false;
+  try{
+    const res = await fetch(sheetsUrl,{
+      method:'POST',
+      headers:{'Content-Type':'text/plain'}, // หลีกเลี่ยง CORS preflight
+      body: JSON.stringify({action:'batchAddEmployees', employees: empList})
+    });
+    return res.ok;
+  }catch(e){
+    // fallback: ส่งทีละก้อนเล็กๆ (chunk ละ 20 คน) ผ่าน GET เพื่อไม่ให้ URL ยาวเกินไป
+    try{
+      const chunkSize=20;
+      for(let i=0;i<empList.length;i+=chunkSize){
+        const chunk=empList.slice(i,i+chunkSize);
+        const url=sheetsUrl+'?action=batchAddEmployees&data='+encodeURIComponent(JSON.stringify({employees:chunk}));
+        await smartGet(url).catch(()=>null);
+      }
+      return true;
+    }catch(e2){
+      return false;
+    }
+  }
 }
 
 function setSyncUI(state){
